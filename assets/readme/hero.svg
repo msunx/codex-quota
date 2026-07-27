@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="400" viewBox="0 0 1200 400"
+     role="img" aria-labelledby="title desc">
+  <title id="title">Codex Quota</title>
+  <desc id="desc">一个把 Codex 剩余额度实时显示在 macOS 菜单栏的原生工具。</desc>
+
+  <rect width="1200" height="400" rx="28" fill="#1E2030"/>
+  <rect x="1" y="1" width="1198" height="398" rx="27" fill="none" stroke="#363A4F" stroke-width="2"/>
+
+  <g id="title-block" transform="translate(64 54)"
+     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif">
+    <text x="0" y="0" dominant-baseline="hanging"
+          fill="#A5ADCB" font-size="18" font-weight="650" letter-spacing="3">
+      NATIVE MACOS MENU BAR UTILITY
+    </text>
+    <text x="0" y="88" fill="#CAD3F5" font-size="72" font-weight="750">
+      Codex Quota
+    </text>
+    <text x="0" y="140" fill="#C59FF7" font-size="27" font-weight="650">
+      剩余额度，始终抬眼可见。
+    </text>
+    <text x="0" y="190" fill="#A5ADCB" font-size="22">
+      跟随当前 Codex / ChatGPT 账号，
+    </text>
+    <text x="0" y="224" fill="#A5ADCB" font-size="22">
+      实时同步额度窗口、重置时间与工作区余额。
+    </text>
+
+    <g transform="translate(0 278)"
+       font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+       font-size="18" fill="#6E738D">
+      <text x="0" y="0">MACOS 14+</text>
+      <circle cx="136" cy="-6" r="3" fill="#6E738D"/>
+      <text x="154" y="0">APPLE SILICON</text>
+      <circle cx="336" cy="-6" r="3" fill="#6E738D"/>
+      <text x="354" y="0">APPKIT</text>
+    </g>
+  </g>
+
+  <g id="quota-specimen" transform="translate(720 36)"
+     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif">
+    <rect x="174" y="0" width="226" height="48" rx="24" fill="#24273A" stroke="#363A4F"/>
+    <path d="M198 29 A12 12 0 0 1 222 29" fill="none" stroke="#CAD3F5" stroke-width="3" stroke-linecap="round"/>
+    <path d="M210 29 L217 20" fill="none" stroke="#C59FF7" stroke-width="3" stroke-linecap="round"/>
+    <text x="242" y="31" fill="#CAD3F5" font-size="22" font-weight="700">74%</text>
+    <circle cx="370" cy="24" r="5" fill="#C59FF7"/>
+
+    <rect x="0" y="64" width="420" height="286" rx="22" fill="#24273A" stroke="#363A4F" stroke-width="2"/>
+
+    <text x="28" y="104" fill="#CAD3F5" font-size="24" font-weight="720">额度</text>
+    <text x="392" y="104" text-anchor="end" fill="#C59FF7" font-size="18" font-weight="700">已连接</text>
+    <line x1="28" y1="124" x2="392" y2="124" stroke="#363A4F"/>
+
+    <text x="28" y="160" fill="#CAD3F5" font-size="20" font-weight="620">Codex · 5 小时</text>
+    <text x="392" y="160" text-anchor="end" fill="#C59FF7" font-size="24" font-weight="730">74%</text>
+    <rect x="28" y="176" width="364" height="8" rx="4" fill="#363A4F"/>
+    <rect x="28" y="176" width="269" height="8" rx="4" fill="#C59FF7"/>
+    <text x="28" y="208" fill="#6E738D" font-size="17">1 小时后重置</text>
+
+    <text x="28" y="246" fill="#CAD3F5" font-size="20" font-weight="620">Codex · 7 天</text>
+    <text x="392" y="246" text-anchor="end" fill="#EED49F" font-size="24" font-weight="730">32%</text>
+    <rect x="28" y="262" width="364" height="8" rx="4" fill="#363A4F"/>
+    <rect x="28" y="262" width="116" height="8" rx="4" fill="#EED49F"/>
+
+    <line x1="28" y1="294" x2="392" y2="294" stroke="#363A4F"/>
+    <text x="28" y="326" fill="#A5ADCB" font-size="18">事件实时更新</text>
+    <text x="392" y="326" text-anchor="end" fill="#A5ADCB" font-size="18">30s 兜底校准</text>
+  </g>
+</svg>
