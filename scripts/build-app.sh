@@ -44,8 +44,23 @@ fi
     -framework Cocoa \
     -framework QuartzCore \
     -framework Network \
+    -framework Security \
     -framework ServiceManagement \
     -o "$MACOS_PATH/CodexQuota"
+
+/usr/bin/clang \
+    -fobjc-arc \
+    -fmodules \
+    -fmodules-cache-path="$MODULE_CACHE" \
+    -arch arm64 \
+    -mmacosx-version-min=14.0 \
+    -Os \
+    -DNDEBUG \
+    -Wall \
+    -Wextra \
+    "$PROJECT_DIR/Sources/HistoryBridge/main.m" \
+    -framework Foundation \
+    -o "$MACOS_PATH/CodexQuotaHistoryBridge"
 
 /bin/cp "$PROJECT_DIR/Resources/Info.plist" "$CONTENTS_PATH/Info.plist"
 

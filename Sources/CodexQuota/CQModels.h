@@ -2,6 +2,14 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+typedef NS_ENUM(NSInteger, CQProviderMode) {
+    CQProviderModeCodex,
+    CQProviderModeDeepSeek
+};
+
+FOUNDATION_EXPORT NSString * const CQDeepSeekFlashModel;
+FOUNDATION_EXPORT NSString * const CQDeepSeekProModel;
+
 @interface CQRateLimitWindow : NSObject
 @property(nonatomic, copy) NSString *limitID;
 @property(nonatomic, copy) NSString *name;
@@ -22,6 +30,24 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (instancetype)snapshotFromRateLimitsResult:(NSDictionary *)result;
 - (double)minimumRemainingPercent;
+@end
+
+@interface CQDeepSeekBalanceInfo : NSObject
+@property(nonatomic, copy) NSString *currency;
+@property(nonatomic, copy) NSString *totalBalance;
+@property(nonatomic, copy) NSString *grantedBalance;
+@property(nonatomic, copy) NSString *toppedUpBalance;
+@property(nonatomic, readonly) NSString *displayValue;
+@end
+
+@interface CQDeepSeekBalance : NSObject
+@property(nonatomic) BOOL available;
+@property(nonatomic, copy) NSArray<CQDeepSeekBalanceInfo *> *balanceInfos;
+@property(nonatomic, strong) NSDate *updatedAt;
+
++ (instancetype)balanceFromResponse:(NSDictionary *)response;
+- (nullable CQDeepSeekBalanceInfo *)preferredBalanceInfo;
+- (NSString *)displayValue;
 @end
 
 FOUNDATION_EXPORT NSString *CQDurationLabel(NSInteger minutes);

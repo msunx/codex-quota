@@ -143,9 +143,17 @@ static NSStackView *CQHorizontal(void) {
 @property(nonatomic, strong) NSTextField *detailLabel;
 @property(nonatomic, strong) NSTextField *planLabel;
 @property(nonatomic, strong) NSStackView *contentStack;
+@property(nonatomic, strong) NSSegmentedControl *providerControl;
+@property(nonatomic, strong) NSStackView *deepSeekSettings;
+@property(nonatomic, strong) NSPopUpButton *modelPopup;
+@property(nonatomic, strong) NSTextField *deepSeekBalanceLabel;
+@property(nonatomic, strong) NSTextField *quotaTitleLabel;
+@property(nonatomic, strong) NSView *quotaDivider;
+@property(nonatomic, strong) NSView *quotaDetailsDivider;
 @property(nonatomic, strong) NSStackView *quotaStack;
 @property(nonatomic, strong) NSMutableDictionary<NSString *, CQQuotaRowView *> *quotaRows;
 @property(nonatomic, strong, nullable) NSTextField *emptyQuotaLabel;
+@property(nonatomic, strong) NSStackView *resetRow;
 @property(nonatomic, strong) NSTextField *resetValueLabel;
 @property(nonatomic, strong) NSStackView *workspaceRow;
 @property(nonatomic, strong) NSTextField *workspaceValueLabel;
@@ -210,23 +218,86 @@ static NSStackView *CQHorizontal(void) {
     [content addArrangedSubview:subheader];
     [content addArrangedSubview:CQDivider()];
 
-    NSTextField *quotaTitle = CQLabel(@"额度", [NSFont systemFontOfSize:12 weight:NSFontWeightSemibold], CQTheme.subtext);
-    [content addArrangedSubview:quotaTitle];
+    NSStackView *providerRow = CQHorizontal();
+    [providerRow addArrangedSubview:CQLabel(@"模型来源", [NSFont systemFontOfSize:12 weight:NSFontWeightSemibold], CQTheme.subtext)];
+    NSView *providerSpacer = [NSView new];
+    [providerSpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
+    [providerRow addArrangedSubview:providerSpacer];
+    self.providerControl = [NSSegmentedControl segmentedControlWithLabels:@[@"Codex 订阅", @"DeepSeek"]
+                                                             trackingMode:NSSegmentSwitchTrackingSelectOne
+                                                                   target:self
+                                                                   action:@selector(providerChanged:)];
+    self.providerControl.segmentStyle = NSSegmentStyleRounded;
+    self.providerControl.selectedSegment = 0;
+    [providerRow addArrangedSubview:self.providerControl];
+    [content addArrangedSubview:providerRow];
+
+    self.deepSeekSettings = [NSStackView new];
+    self.deepSeekSettings.orientation = NSUserInterfaceLayoutOrientationVertical;
+    self.deepSeekSettings.alignment = NSLayoutAttributeLeading;
+    self.deepSeekSettings.spacing = 9;
+
+    NSStackView *modelRow = CQHorizontal();
+    [modelRow addArrangedSubview:CQLabel(@"具体模型", [NSFont systemFontOfSize:12], CQTheme.subtext)];
+    NSView *modelSpacer = [NSView new];
+    [modelSpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
+    [modelRow addArrangedSubview:modelSpacer];
+    self.modelPopup = [NSPopUpButton new];
+    self.modelPopup.autoenablesItems = NO;
+    [self.modelPopup addItemWithTitle:CQDeepSeekFlashModel];
+    [self.modelPopup addItemWithTitle:@"deepseek-v4-pro（暂不可用）"];
+    self.modelPopup.lastItem.enabled = NO;
+    self.modelPopup.target = self;
+    self.modelPopup.action = @selector(modelChanged:);
+    self.modelPopup.font = [NSFont monospacedSystemFontOfSize:11 weight:NSFontWeightMedium];
+    [modelRow addArrangedSubview:self.modelPopup];
+    [self.deepSeekSettings addArrangedSubview:modelRow];
+
+    NSStackView *balanceRow = CQHorizontal();
+    [balanceRow addArrangedSubview:CQLabel(@"剩余金额", [NSFont systemFontOfSize:12], CQTheme.subtext)];
+    NSView *balanceSpacer = [NSView new];
+    [balanceSpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
+    [balanceRow addArrangedSubview:balanceSpacer];
+    self.deepSeekBalanceLabel = CQLabel(@"等待余额数据…",
+        [NSFont monospacedDigitSystemFontOfSize:13 weight:NSFontWeightSemibold], CQTheme.text);
+    self.deepSeekBalanceLabel.alignment = NSTextAlignmentRight;
+    [balanceRow addArrangedSubview:self.deepSeekBalanceLabel];
+    [self.deepSeekSettings addArrangedSubview:balanceRow];
+
+    NSStackView *keyRow = CQHorizontal();
+    [keyRow addArrangedSubview:CQLabel(@"API Key 已配置，可随时更换",
+        [NSFont systemFontOfSize:10], CQTheme.overlay)];
+    NSView *keySpacer = [NSView new];
+    [keySpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
+    [keyRow addArrangedSubview:keySpacer];
+    [keyRow addArrangedSubview:CQButton(@"更换 API Key", @"key", self, @selector(changeAPIKey:))];
+    [self.deepSeekSettings addArrangedSubview:keyRow];
+    [modelRow.widthAnchor constraintEqualToAnchor:self.deepSeekSettings.widthAnchor].active = YES;
+    [balanceRow.widthAnchor constraintEqualToAnchor:self.deepSeekSettings.widthAnchor].active = YES;
+    [keyRow.widthAnchor constraintEqualToAnchor:self.deepSeekSettings.widthAnchor].active = YES;
+    self.deepSeekSettings.hidden = YES;
+    [content addArrangedSubview:self.deepSeekSettings];
+
+    self.quotaDivider = CQDivider();
+    [content addArrangedSubview:self.quotaDivider];
+    self.quotaTitleLabel = CQLabel(@"Codex 额度", [NSFont systemFontOfSize:12 weight:NSFontWeightSemibold], CQTheme.subtext);
+    [content addArrangedSubview:self.quotaTitleLabel];
     self.quotaStack = [NSStackView new];
     self.quotaStack.orientation = NSUserInterfaceLayoutOrientationVertical;
     self.quotaStack.alignment = NSLayoutAttributeLeading;
     self.quotaStack.spacing = 13;
     [content addArrangedSubview:self.quotaStack];
 
-    [content addArrangedSubview:CQDivider()];
-    NSStackView *resetRow = CQHorizontal();
-    [resetRow addArrangedSubview:CQLabel(@"剩余重置次数", [NSFont systemFontOfSize:12], CQTheme.subtext)];
+    self.quotaDetailsDivider = CQDivider();
+    [content addArrangedSubview:self.quotaDetailsDivider];
+    self.resetRow = CQHorizontal();
+    [self.resetRow addArrangedSubview:CQLabel(@"剩余重置次数", [NSFont systemFontOfSize:12], CQTheme.subtext)];
     NSView *resetSpacer = [NSView new];
     [resetSpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
-    [resetRow addArrangedSubview:resetSpacer];
+    [self.resetRow addArrangedSubview:resetSpacer];
     self.resetValueLabel = CQLabel(@"不可用", [NSFont monospacedDigitSystemFontOfSize:13 weight:NSFontWeightSemibold], CQTheme.text);
-    [resetRow addArrangedSubview:self.resetValueLabel];
-    [content addArrangedSubview:resetRow];
+    [self.resetRow addArrangedSubview:self.resetValueLabel];
+    [content addArrangedSubview:self.resetRow];
 
     self.workspaceRow = CQHorizontal();
     [self.workspaceRow addArrangedSubview:CQLabel(@"工作区额度", [NSFont systemFontOfSize:12], CQTheme.subtext)];
@@ -300,8 +371,10 @@ static NSStackView *CQHorizontal(void) {
         [content.bottomAnchor constraintEqualToAnchor:document.bottomAnchor constant:-16],
         [header.widthAnchor constraintEqualToAnchor:content.widthAnchor],
         [subheader.widthAnchor constraintEqualToAnchor:content.widthAnchor],
+        [providerRow.widthAnchor constraintEqualToAnchor:content.widthAnchor],
+        [self.deepSeekSettings.widthAnchor constraintEqualToAnchor:content.widthAnchor],
         [self.quotaStack.widthAnchor constraintEqualToAnchor:content.widthAnchor],
-        [resetRow.widthAnchor constraintEqualToAnchor:content.widthAnchor],
+        [self.resetRow.widthAnchor constraintEqualToAnchor:content.widthAnchor],
         [self.workspaceRow.widthAnchor constraintEqualToAnchor:content.widthAnchor],
         [self.errorLabel.widthAnchor constraintEqualToAnchor:content.widthAnchor],
         [footerStack.leadingAnchor constraintGreaterThanOrEqualToAnchor:footer.leadingAnchor constant:14],
@@ -387,35 +460,53 @@ static NSStackView *CQHorizontal(void) {
 }
 
 - (void)renderSnapshot:(CQQuotaSnapshot *)snapshot
+       deepSeekBalance:(CQDeepSeekBalance *)deepSeekBalance
+          providerMode:(CQProviderMode)providerMode
+                 model:(NSString *)model
                 status:(NSString *)status
                 detail:(NSString *)detail
                  error:(NSString *)error
             refreshing:(BOOL)refreshing
              signedOut:(BOOL)signedOut
          launchAtLogin:(BOOL)launchAtLogin {
+    BOOL deepSeek = providerMode == CQProviderModeDeepSeek;
     self.statusLabel.stringValue = status;
     self.statusLabel.textColor = [status isEqualToString:@"已连接"] ? CQTheme.accent
-        : ([status isEqualToString:@"需要登录"] || [status isEqualToString:@"已断开"] ? CQTheme.red : CQTheme.yellow);
+        : ([status isEqualToString:@"需要登录"]
+           || [status isEqualToString:@"需要 API Key"]
+           || [status isEqualToString:@"已断开"] ? CQTheme.red : CQTheme.yellow);
     self.detailLabel.stringValue = detail;
-    self.planLabel.stringValue = snapshot.planType.uppercaseString ?: @"";
+    self.planLabel.stringValue = deepSeek ? @"DEEPSEEK" : (snapshot.planType.uppercaseString ?: @"");
+    self.providerControl.selectedSegment = deepSeek ? 1 : 0;
+    self.deepSeekSettings.hidden = !deepSeek;
+    [self.modelPopup selectItemWithTitle:model ?: CQDeepSeekFlashModel];
+    self.deepSeekBalanceLabel.stringValue = deepSeekBalance ? deepSeekBalance.displayValue : @"等待余额数据…";
+    self.deepSeekBalanceLabel.textColor = deepSeekBalance.available ? CQTheme.accent : CQTheme.yellow;
+
+    self.quotaDivider.hidden = deepSeek;
+    self.quotaTitleLabel.hidden = deepSeek;
+    self.quotaStack.hidden = deepSeek;
+    self.quotaDetailsDivider.hidden = deepSeek;
+    self.resetRow.hidden = deepSeek;
     self.refreshButton.enabled = !refreshing;
     self.refreshButton.title = refreshing ? @"刷新中…" : @"立即刷新";
-    self.loginButton.hidden = !signedOut;
+    self.loginButton.hidden = deepSeek || !signedOut;
     self.launchCheckbox.state = launchAtLogin ? NSControlStateValueOn : NSControlStateValueOff;
 
-    [self reconcileQuotaWindows:snapshot.windows ?: @[] hasSnapshot:snapshot != nil];
+    if (!deepSeek) [self reconcileQuotaWindows:snapshot.windows ?: @[] hasSnapshot:snapshot != nil];
 
     self.resetValueLabel.stringValue = snapshot.resetCreditsAvailable
         ? [NSString stringWithFormat:@"%@ 次", snapshot.resetCreditsAvailable] : @"不可用";
-    self.workspaceRow.hidden = !snapshot.hasWorkspaceCredits;
-    if (snapshot.hasWorkspaceCredits) {
+    self.workspaceRow.hidden = deepSeek || !snapshot.hasWorkspaceCredits;
+    if (!deepSeek && snapshot.hasWorkspaceCredits) {
         self.workspaceValueLabel.stringValue = snapshot.workspaceUnlimited
             ? @"无限" : (snapshot.workspaceBalance ?: @"不可用");
     }
     self.errorLabel.hidden = error.length == 0;
     self.errorLabel.stringValue = error ?: @"";
-    self.updatedLabel.stringValue = snapshot
-        ? [NSString stringWithFormat:@"最后更新：%@", CQAbsoluteDateString(snapshot.updatedAt)]
+    NSDate *updatedAt = deepSeek ? deepSeekBalance.updatedAt : snapshot.updatedAt;
+    self.updatedLabel.stringValue = updatedAt
+        ? [NSString stringWithFormat:@"最后更新：%@", CQAbsoluteDateString(updatedAt)]
         : @"尚未更新";
 
     [self.view layoutSubtreeIfNeeded];
@@ -427,6 +518,15 @@ static NSStackView *CQHorizontal(void) {
 - (void)refresh:(id)sender { if (self.refreshHandler) self.refreshHandler(); }
 - (void)login:(id)sender { if (self.loginHandler) self.loginHandler(); }
 - (void)chooseCodex:(id)sender { if (self.chooseCodexHandler) self.chooseCodexHandler(); }
+- (void)providerChanged:(NSSegmentedControl *)sender {
+    if (self.providerChangeHandler) {
+        self.providerChangeHandler(sender.selectedSegment == 1 ? CQProviderModeDeepSeek : CQProviderModeCodex);
+    }
+}
+- (void)modelChanged:(NSPopUpButton *)sender {
+    if (self.modelChangeHandler) self.modelChangeHandler(sender.selectedItem.title);
+}
+- (void)changeAPIKey:(id)sender { if (self.changeAPIKeyHandler) self.changeAPIKeyHandler(); }
 - (void)toggleLaunchAtLogin:(NSButton *)sender {
     if (self.launchAtLoginHandler) self.launchAtLoginHandler(sender.state == NSControlStateValueOn);
 }

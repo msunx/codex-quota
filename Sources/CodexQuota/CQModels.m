@@ -1,5 +1,8 @@
 #import "CQModels.h"
 
+NSString * const CQDeepSeekFlashModel = @"deepseek-v4-flash";
+NSString * const CQDeepSeekProModel = @"deepseek-v4-pro";
+
 @implementation CQRateLimitWindow
 - (double)remainingPercent {
     return MAX(0.0, MIN(100.0, 100.0 - self.usedPercent));
@@ -150,6 +153,59 @@ static NSDictionary *CQCreditsDictionary(NSDictionary *result) {
         minimum = MIN(minimum, window.remainingPercent);
     }
     return minimum;
+}
+
+@end
+
+@implementation CQDeepSeekBalanceInfo
+
+- (NSString *)displayValue {
+    NSString *symbol = [self.currency isEqualToString:@"CNY"] ? @"¥"
+        : ([self.currency isEqualToString:@"USD"] ? @"$" : @"");
+    return [NSString stringWithFormat:@"%@%@ %@", symbol, self.totalBalance, self.currency];
+}
+
+@end
+
+@implementation CQDeepSeekBalance
+
++ (instancetype)balanceFromResponse:(NSDictionary *)response {
+    CQDeepSeekBalance *balance = [CQDeepSeekBalance new];
+    balance.available = [CQNumber(response[@"is_available"]) boolValue];
+    balance.updatedAt = NSDate.date;
+    NSMutableArray<CQDeepSeekBalanceInfo *> *infos = [NSMutableArray array];
+    id rawInfos = response[@"balance_infos"];
+    if ([rawInfos isKindOfClass:NSArray.class]) {
+        for (id value in (NSArray *)rawInfos) {
+            if (![value isKindOfClass:NSDictionary.class]) continue;
+            NSDictionary *raw = value;
+            NSString *currency = CQString(raw[@"currency"]);
+            NSString *total = CQString(raw[@"total_balance"]);
+            if (currency.length == 0 || total.length == 0) continue;
+            CQDeepSeekBalanceInfo *info = [CQDeepSeekBalanceInfo new];
+            info.currency = currency;
+            info.totalBalance = total;
+            info.grantedBalance = CQString(raw[@"granted_balance"]) ?: @"0";
+            info.toppedUpBalance = CQString(raw[@"topped_up_balance"]) ?: @"0";
+            [infos addObject:info];
+        }
+    }
+    balance.balanceInfos = infos;
+    return balance;
+}
+
+- (CQDeepSeekBalanceInfo *)preferredBalanceInfo {
+    for (CQDeepSeekBalanceInfo *info in self.balanceInfos) {
+        if ([info.currency isEqualToString:@"CNY"]) return info;
+    }
+    return self.balanceInfos.firstObject;
+}
+
+- (NSString *)displayValue {
+    if (self.balanceInfos.count == 0) return self.available ? @"余额未知" : @"余额不可用";
+    NSMutableArray<NSString *> *values = [NSMutableArray arrayWithCapacity:self.balanceInfos.count];
+    for (CQDeepSeekBalanceInfo *info in self.balanceInfos) [values addObject:info.displayValue];
+    return [values componentsJoinedByString:@" · "];
 }
 
 @end

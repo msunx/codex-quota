@@ -8,17 +8,17 @@ macos
 
 ## Users
 
-主要用户是已经在 macOS 上使用 Codex 或 ChatGPT Codex 的个人开发者。他们希望在不中断当前工作的情况下，随时看到当前账号最紧张的额度窗口，并能快速展开查看全部额度与重置详情。
+主要用户是已经在 macOS 上使用 Codex 或 ChatGPT Codex 的个人开发者。他们希望在不中断当前工作的情况下，随时看到当前模型来源和额度，并能在 Codex 默认订阅与 DeepSeek API 之间切换。
 
 ## Product Purpose
 
-Codex Quota 是一个仅驻留在 macOS 菜单栏的轻量工具。它通过本机 Codex App Server 读取当前活动账号的额度状态，并将最低剩余额度持续显示在菜单栏中。
+Codex Quota 是一个仅驻留在 macOS 菜单栏的轻量工具。Codex 模式通过本机 App Server 读取订阅额度；DeepSeek 模式通过官方余额 API 读取剩余金额，并管理 Codex 官方要求的模型配置。
 
 成功意味着：额度信息足够及时、状态可信、出现问题时能自解释，同时应用在后台几乎不打扰用户。
 
 ## Positioning
 
-应用直接复用用户本机的官方 Codex 登录与 App Server 协议，不抓取界面、不读取认证文件，也不要求用户复制令牌。
+Codex 模式直接复用本机官方登录与 App Server 协议。DeepSeek 模式仅在用户主动切换时要求 API Key，并备份、恢复用户原有 Codex 配置。
 
 ## Operating Context
 
@@ -33,6 +33,9 @@ Codex Quota 是一个仅驻留在 macOS 菜单栏的轻量工具。它通过本�
 - 使用事件通知更新，并以 30 秒轮询兜底。
 - 自动发现 Codex 可执行文件，找不到时允许手动选择。
 - 支持官方 ChatGPT 浏览器登录流程。
+- 支持 Codex 默认订阅与 DeepSeek 之间切换；当前仅启用 `deepseek-v4-flash`，`deepseek-v4-pro` 保留为禁用选项。
+- 支持 DeepSeek API Key 首次输入、钥匙串保存和随时更换，并显示官方余额接口返回的币种与剩余金额。
+- 模型来源切换完成后询问是否立即重启 Codex；切换 DeepSeek 时保留现有 ChatGPT 登录身份，并通过本地兼容桥统一显示 Codex、DeepSeek 与旧版 custom provider 的会话入口。
 - 登录时启动由用户主动开启，默认关闭。
 - 目标为 macOS 14+、Apple Silicon、个人本机安装。
 - 不包含多账号、Mac App Store、自动更新、公证或内置 Codex 二进制。
