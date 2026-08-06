@@ -10,6 +10,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy, nullable) void (^providerChangeHandler)(CQProviderMode mode);
 @property(nonatomic, copy, nullable) void (^modelChangeHandler)(NSString *model);
 @property(nonatomic, copy, nullable) void (^changeAPIKeyHandler)(void);
+@property(nonatomic, copy, nullable) void (^extensionManagerHandler)(void);
 @property(nonatomic, copy, nullable) void (^launchAtLoginHandler)(BOOL enabled);
 @property(nonatomic, copy, nullable) void (^quitHandler)(void);
 

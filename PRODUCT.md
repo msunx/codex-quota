@@ -36,9 +36,13 @@ Codex 模式直接复用本机官方登录与 App Server 协议。DeepSeek 模�
 - 支持 Codex 默认订阅与 DeepSeek 之间切换；当前仅启用 `deepseek-v4-flash`，`deepseek-v4-pro` 保留为禁用选项。
 - 支持 DeepSeek API Key 首次输入、钥匙串保存和随时更换，并显示官方余额接口返回的币种与剩余金额。
 - 模型来源切换完成后询问是否立即重启 Codex；切换 DeepSeek 时保留现有 ChatGPT 登录身份，并通过本地兼容桥统一显示 Codex、DeepSeek 与旧版 custom provider 的会话入口。
+- 提供第三方与自建 Skill / 插件管理页，排除系统自带扩展；每 6 小时自动检查更新，并允许用户打开本机安装目录、逐项一键更新或彻底卸载 Skill。
+- 每个 Skill 展示用途说明；飞书官方 `lark-*` Skills 聚合为一个“飞书 CLI Skills”套件，并统一通过 `lark-cli update` 更新。
+- 菜单栏弹窗在本次运行期间记住最后访问的额度页或扩展页，失去焦点再打开时不重置页面。
+- 有明确上游来源的扩展才参与自动版本判断；没有来源元数据的自建 Skill 只展示为本地维护，不自动覆盖。
 - 登录时启动由用户主动开启，默认关闭。
 - 目标为 macOS 14+、Apple Silicon、个人本机安装。
-- 不包含多账号、Mac App Store、自动更新、公证或内置 Codex 二进制。
+- 不包含多账号、Mac App Store、应用自身自动更新、公证或内置 Codex 二进制。
 
 ## Brand Commitments
 

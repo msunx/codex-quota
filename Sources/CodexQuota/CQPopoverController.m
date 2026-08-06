@@ -202,6 +202,9 @@ static NSStackView *CQHorizontal(void) {
     NSView *spacer = [NSView new];
     [spacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
     [header addArrangedSubview:spacer];
+    NSButton *extensions = CQButton(@"扩展", @"puzzlepiece.extension", self, @selector(showExtensions:));
+    extensions.toolTip = @"管理第三方与自建 Skill / 插件";
+    [header addArrangedSubview:extensions];
     self.statusLabel = CQLabel(@"正在连接", [NSFont systemFontOfSize:11 weight:NSFontWeightSemibold], CQTheme.yellow);
     self.statusLabel.alignment = NSTextAlignmentRight;
     [header addArrangedSubview:self.statusLabel];
@@ -527,6 +530,7 @@ static NSStackView *CQHorizontal(void) {
     if (self.modelChangeHandler) self.modelChangeHandler(sender.selectedItem.title);
 }
 - (void)changeAPIKey:(id)sender { if (self.changeAPIKeyHandler) self.changeAPIKeyHandler(); }
+- (void)showExtensions:(id)sender { if (self.extensionManagerHandler) self.extensionManagerHandler(); }
 - (void)toggleLaunchAtLogin:(NSButton *)sender {
     if (self.launchAtLoginHandler) self.launchAtLoginHandler(sender.state == NSControlStateValueOn);
 }

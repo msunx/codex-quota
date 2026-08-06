@@ -5,10 +5,13 @@
 #import "CQCodexClient.h"
 #import "CQCodexConfigManager.h"
 #import "CQDeepSeekClient.h"
+#import "CQExtensionManagerController.h"
+#import "CQExtensions.h"
 #import "CQPopoverController.h"
 #import "CQTheme.h"
 
 static NSString * const CQSavedCodexPathKey = @"CodexExecutablePath";
+static CGFloat const CQPopoverWidth = 360.0;
 
 static os_log_t CQLogger(void) {
     static os_log_t logger;
@@ -28,10 +31,17 @@ typedef NS_ENUM(NSInteger, CQConnectionState) {
     CQConnectionStateError
 };
 
+typedef NS_ENUM(NSInteger, CQPopoverPage) {
+    CQPopoverPageQuota,
+    CQPopoverPageExtensions
+};
+
 @interface CQAppDelegate : NSObject <NSApplicationDelegate, NSPopoverDelegate>
 @property(nonatomic, strong) NSStatusItem *statusItem;
 @property(nonatomic, strong) NSPopover *popover;
 @property(nonatomic, strong) CQPopoverController *popoverController;
+@property(nonatomic, strong) CQExtensionManager *extensionManager;
+@property(nonatomic, strong) CQExtensionManagerController *extensionController;
 @property(nonatomic, strong, nullable) CQCodexClient *client;
 @property(nonatomic, strong) CQCodexConfigManager *configManager;
 @property(nonatomic, strong) CQDeepSeekClient *deepSeekClient;
@@ -51,6 +61,7 @@ typedef NS_ENUM(NSInteger, CQConnectionState) {
 @property(nonatomic) NSInteger refreshRetryToken;
 @property(nonatomic) NSInteger loginPollRemaining;
 @property(nonatomic) CQConnectionState connectionState;
+@property(nonatomic) CQPopoverPage currentPopoverPage;
 @property(nonatomic, copy) NSString *detail;
 @property(nonatomic, copy, nullable) NSString *errorMessage;
 @property(nonatomic, strong, nullable) NSWindow *previewWindow;
@@ -62,7 +73,8 @@ typedef NS_ENUM(NSInteger, CQConnectionState) {
     NSArray<NSString *> *arguments = NSProcessInfo.processInfo.arguments;
     if ([arguments containsObject:@"--preview"]
         || [arguments containsObject:@"--preview-deepseek"]
-        || [arguments containsObject:@"--preview-api-key"]) {
+        || [arguments containsObject:@"--preview-api-key"]
+        || [arguments containsObject:@"--preview-extensions"]) {
         [self configureApplicationMenu];
         [self showPreviewWindow];
         return;
@@ -118,6 +130,17 @@ typedef NS_ENUM(NSInteger, CQConnectionState) {
     [self.previewWindow center];
     [self.previewWindow orderFrontRegardless];
     [NSApp activateIgnoringOtherApps:YES];
+
+    BOOL previewExtensions = [NSProcessInfo.processInfo.arguments containsObject:@"--preview-extensions"];
+    if (previewExtensions) {
+        self.extensionManager = [[CQExtensionManager alloc] initWithCodexURL:[self locateCodex]];
+        self.extensionController = [[CQExtensionManagerController alloc] initWithManager:self.extensionManager];
+        self.extensionController.backHandler = ^{};
+        self.previewWindow.contentViewController = self.extensionController;
+        [self.previewWindow setContentSize:NSMakeSize(360, 500)];
+        self.previewWindow.title = @"Codex Quota · 扩展管理预览";
+        return;
+    }
 
     CQRateLimitWindow *shortWindow = [CQRateLimitWindow new];
     shortWindow.limitID = @"preview-primary";
@@ -177,6 +200,7 @@ typedef NS_ENUM(NSInteger, CQConnectionState) {
     if (self.pathMonitor) nw_path_monitor_cancel(self.pathMonitor);
     [self.client stop];
     [self.deepSeekClient cancel];
+    [self.extensionManager stop];
 }
 
 - (void)configureApplicationMenu {
@@ -237,6 +261,7 @@ typedef NS_ENUM(NSInteger, CQConnectionState) {
         [weakSelf switchDeepSeekModel:model];
     };
     self.popoverController.changeAPIKeyHandler = ^{ [weakSelf promptToChangeDeepSeekAPIKey]; };
+    self.popoverController.extensionManagerHandler = ^{ [weakSelf showExtensionManager]; };
     self.popoverController.launchAtLoginHandler = ^(BOOL enabled) { [weakSelf setLaunchAtLogin:enabled]; };
     self.popoverController.quitHandler = ^{ [NSApp terminate:nil]; };
 
@@ -244,7 +269,15 @@ typedef NS_ENUM(NSInteger, CQConnectionState) {
     self.popover.behavior = NSPopoverBehaviorTransient;
     self.popover.animates = !NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceMotion;
     self.popover.contentViewController = self.popoverController;
+    self.popover.contentSize = NSMakeSize(CQPopoverWidth, self.popoverController.preferredContentSize.height);
     self.popover.delegate = self;
+    self.currentPopoverPage = CQPopoverPageQuota;
+
+    NSURL *extensionCodexURL = self.codexURL ?: [self locateCodex];
+    self.extensionManager = [[CQExtensionManager alloc] initWithCodexURL:extensionCodexURL];
+    self.extensionController = [[CQExtensionManagerController alloc] initWithManager:self.extensionManager];
+    self.extensionController.backHandler = ^{ [weakSelf showQuotaPanel]; };
+    [self.extensionManager startPeriodicChecks];
 }
 
 - (void)configureSystemObservers {
@@ -286,9 +319,33 @@ typedef NS_ENUM(NSInteger, CQConnectionState) {
         [self.popover performClose:nil];
         return;
     }
+    if (self.currentPopoverPage == CQPopoverPageExtensions) [self showExtensionManager];
+    else [self showQuotaPanel];
     NSStatusBarButton *button = self.statusItem.button;
     [self.popover showRelativeToRect:button.bounds ofView:button preferredEdge:NSRectEdgeMinY];
     [self refreshNow];
+}
+
+- (void)showExtensionManager {
+    self.currentPopoverPage = CQPopoverPageExtensions;
+    (void)self.extensionController.view;
+    CGFloat height = self.extensionController.preferredContentSize.height;
+    self.popover.contentSize = NSMakeSize(CQPopoverWidth, height);
+    self.popover.contentViewController = self.extensionController;
+    self.popover.contentSize = NSMakeSize(CQPopoverWidth, height);
+    [self.extensionManager setCodexURL:self.codexURL ?: [self locateCodex]];
+    if (self.extensionManager.items.count == 0) [self.extensionManager loadInstalledExtensions];
+}
+
+- (void)showQuotaPanel {
+    self.currentPopoverPage = CQPopoverPageQuota;
+    (void)self.popoverController.view;
+    CGFloat height = self.popoverController.preferredContentSize.height;
+    self.popover.contentSize = NSMakeSize(CQPopoverWidth, height);
+    if (self.popover.contentViewController != self.popoverController) {
+        self.popover.contentViewController = self.popoverController;
+    }
+    self.popover.contentSize = NSMakeSize(CQPopoverWidth, height);
 }
 
 - (void)popoverDidShow:(NSNotification *)notification {
@@ -309,6 +366,7 @@ typedef NS_ENUM(NSInteger, CQConnectionState) {
 - (void)locateAndConnect {
     if (self.providerMode != CQProviderModeCodex) return;
     self.codexURL = [self locateCodex];
+    [self.extensionManager setCodexURL:self.codexURL];
     if (!self.codexURL) {
         self.connectionState = CQConnectionStateError;
         self.detail = @"未找到 Codex";
@@ -846,6 +904,7 @@ typedef NS_ENUM(NSInteger, CQConnectionState) {
     }
     [NSUserDefaults.standardUserDefaults setObject:url.path forKey:CQSavedCodexPathKey];
     self.codexURL = url;
+    [self.extensionManager setCodexURL:url];
     self.reconnectAttempt = 0;
     [self connect];
 }

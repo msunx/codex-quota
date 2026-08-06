@@ -22,6 +22,10 @@ static NSString *CQClientString(id value) {
 @property(nonatomic) NSInteger nextRequestID;
 @property(nonatomic) dispatch_queue_t queue;
 @property(nonatomic) BOOL intentionallyStopping;
+- (void)requestMethod:(NSString *)method
+                params:(NSDictionary *)params
+               timeout:(NSTimeInterval)timeout
+            completion:(void (^)(id _Nullable result, NSError * _Nullable error))completion;
 @end
 
 @implementation CQCodexClient
@@ -162,8 +166,51 @@ static NSString *CQClientString(id value) {
     }];
 }
 
+- (void)listSkillsAtWorkingDirectory:(NSString *)workingDirectory
+                         forceReload:(BOOL)forceReload
+                          completion:(CQClientDictionaryBlock)completion {
+    NSDictionary *params = @{
+        @"cwds": @[workingDirectory.length > 0 ? workingDirectory : NSHomeDirectory()],
+        @"forceReload": @(forceReload)
+    };
+    [self requestMethod:@"skills/list" params:params timeout:20 completion:^(id result, NSError *error) {
+        completion([result isKindOfClass:NSDictionary.class] ? result : nil, error);
+    }];
+}
+
+- (void)listPluginsAtWorkingDirectory:(NSString *)workingDirectory
+                          forceRefetch:(BOOL)forceRefetch
+                            completion:(CQClientDictionaryBlock)completion {
+    NSDictionary *params = @{
+        @"cwds": @[workingDirectory.length > 0 ? workingDirectory : NSHomeDirectory()],
+        @"forceRefetch": @(forceRefetch)
+    };
+    [self requestMethod:@"plugin/list" params:params timeout:90 completion:^(id result, NSError *error) {
+        completion([result isKindOfClass:NSDictionary.class] ? result : nil, error);
+    }];
+}
+
+- (void)installPluginNamed:(NSString *)pluginName
+           marketplacePath:(NSString *)marketplacePath
+      remoteMarketplaceName:(NSString *)remoteMarketplaceName
+                 completion:(CQClientDictionaryBlock)completion {
+    NSMutableDictionary *params = [NSMutableDictionary dictionaryWithObject:pluginName forKey:@"pluginName"];
+    if (marketplacePath.length > 0) params[@"marketplacePath"] = marketplacePath;
+    if (remoteMarketplaceName.length > 0) params[@"remoteMarketplaceName"] = remoteMarketplaceName;
+    [self requestMethod:@"plugin/install" params:params timeout:120 completion:^(id result, NSError *error) {
+        completion([result isKindOfClass:NSDictionary.class] ? result : nil, error);
+    }];
+}
+
 - (void)requestMethod:(NSString *)method
                 params:(NSDictionary *)params
+            completion:(void (^)(id _Nullable, NSError * _Nullable))completion {
+    [self requestMethod:method params:params timeout:12 completion:completion];
+}
+
+- (void)requestMethod:(NSString *)method
+                params:(NSDictionary *)params
+               timeout:(NSTimeInterval)timeout
             completion:(void (^)(id _Nullable, NSError * _Nullable))completion {
     dispatch_async(self.queue, ^{
         NSNumber *requestID = @(self.nextRequestID++);
@@ -175,7 +222,7 @@ static NSString *CQClientString(id value) {
             dispatch_async(dispatch_get_main_queue(), ^{ completion(nil, error); });
             return;
         }
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 12 * NSEC_PER_SEC), self.queue, ^{
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(timeout * NSEC_PER_SEC)), self.queue, ^{
             void (^callback)(id, NSError *) = self.pending[requestID];
             if (!callback) return;
             [self.pending removeObjectForKey:requestID];
