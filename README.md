@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <code>v0.2.4</code>
+  <code>v0.2.5</code>
   <code>macOS 14+</code>
   <code>Apple Silicon</code>
   <code>AppKit</code>
@@ -142,7 +142,7 @@ npx @larksuite/cli@latest install
 
 ## 当前限制
 
-- 仅构建 arm64 版本，当前版本为 `0.2.4`；
+- 仅构建 arm64 版本，当前版本为 `0.2.5`；
 - 不支持多账号切换；
 - 不包含应用自身自动更新、Mac App Store 分发或内置 Codex；
 - 没有来源元数据的本地 Skill 无法自动判断新版本；

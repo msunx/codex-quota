@@ -24,7 +24,7 @@
 
       <g transform="translate(0 334)" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15" font-weight="650">
         <rect width="108" height="34" rx="17" fill="#24273A" stroke="#363A4F"/>
-        <text x="54" y="22" text-anchor="middle" fill="#CAD3F5">v0.2.4</text>
+        <text x="54" y="22" text-anchor="middle" fill="#CAD3F5">v0.2.5</text>
         <rect x="120" width="128" height="34" rx="17" fill="#24273A" stroke="#363A4F"/>
         <text x="184" y="22" text-anchor="middle" fill="#CAD3F5">macOS 14+</text>
         <rect x="260" width="158" height="34" rx="17" fill="#24273A" stroke="#363A4F"/>
