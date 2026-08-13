@@ -71,6 +71,20 @@ static NSString * const CQKeychainAccount = @"api-key";
 }
 
 - (NSString *)currentDeepSeekModel {
+    NSString *config = [self stringAtURL:self.configURL];
+    if (![config containsString:CQManagedMarker]) return CQDeepSeekFlashModel;
+    NSRegularExpression *expression = [NSRegularExpression
+        regularExpressionWithPattern:@"(?m)^\\s*model\\s*=\\s*\"([^\"]+)\""
+                              options:0
+                                error:nil];
+    NSTextCheckingResult *match = [expression firstMatchInString:config
+                                                       options:0
+                                                         range:NSMakeRange(0, config.length)];
+    if (match.numberOfRanges >= 2) {
+        NSString *model = [config substringWithRange:[match rangeAtIndex:1]];
+        if ([model isEqualToString:CQDeepSeekFlashModel]
+            || [model isEqualToString:CQDeepSeekProModel]) return model;
+    }
     return CQDeepSeekFlashModel;
 }
 
@@ -267,11 +281,11 @@ static NSString * const CQKeychainAccount = @"api-key";
         stringByReplacingOccurrencesOfString:@"\"" withString:@"\\\""];
 }
 
-- (NSString *)deepSeekConfigForAPIKey:(NSString *)apiKey original:(NSString *)original {
+- (NSString *)deepSeekConfigForModel:(NSString *)model apiKey:(NSString *)apiKey original:(NSString *)original {
     NSString *preserved = [self filteredOriginalConfig:original];
     NSMutableString *config = [NSMutableString string];
     [config appendFormat:@"%@\n", CQManagedMarker];
-    [config appendString:@"model = \"deepseek-v4-flash\"\n"];
+    [config appendFormat:@"model = \"%@\"\n", [self tomlEscapedString:model]];
     [config appendString:@"model_provider = \"deepseek\"\n"];
     [config appendString:@"model_reasoning_effort = \"high\"\n"];
     [config appendFormat:@"model_catalog_json = \"%@\"\n",
@@ -329,7 +343,7 @@ static NSString * const CQKeychainAccount = @"api-key";
         @"default_reasoning_level": @"high",
         @"supported_reasoning_levels": @[
             @{@"effort": @"low", @"description": @"Fast responses with lighter reasoning"},
-            @{@"effort": @"high", @"description": @"Extra reasoning depth for complex problems"},
+            @{@"effort": @"high", @"description": @"Extra high reasoning depth for complex problems"},
             @{@"effort": @"max", @"description": @"Maximum reasoning depth for the hardest problems"}
         ],
         @"shell_type": @"shell_command",
@@ -347,12 +361,18 @@ static NSString * const CQKeychainAccount = @"api-key";
     for (NSString *key in @[@"base_instructions", @"model_messages"]) {
         if (template[key]) model[key] = template[key];
     }
-    return @{ @"models": @[model] };
+    NSMutableDictionary *proModel = [model mutableCopy];
+    proModel[@"slug"] = CQDeepSeekProModel;
+    proModel[@"display_name"] = @"DeepSeek-V4-Pro";
+    proModel[@"description"] = @"Most capable frontier agentic coding model.";
+    proModel[@"priority"] = @2;
+    return @{ @"models": @[model, proModel] };
 }
 
 - (BOOL)switchToDeepSeekModel:(NSString *)model apiKey:(NSString *)apiKey error:(NSError **)error {
-    if (![model isEqualToString:CQDeepSeekFlashModel]) {
-        if (error) *error = [self errorWithCode:-5 description:@"DeepSeek V4 Pro 暂不可用"];
+    if (![model isEqualToString:CQDeepSeekFlashModel]
+        && ![model isEqualToString:CQDeepSeekProModel]) {
+        if (error) *error = [self errorWithCode:-5 description:@"不支持的 DeepSeek 模型"];
         return NO;
     }
     if (![self validateAPIKey:apiKey error:error]
@@ -372,7 +392,7 @@ static NSString * const CQKeychainAccount = @"api-key";
         if (error) *error = writeError;
         return NO;
     }
-    NSString *config = [self deepSeekConfigForAPIKey:apiKey original:[self originalConfig]];
+    NSString *config = [self deepSeekConfigForModel:model apiKey:apiKey original:[self originalConfig]];
     if (![config writeToURL:self.configURL atomically:YES encoding:NSUTF8StringEncoding error:&writeError]) {
         NSDictionary *manifest = [self backupManifest];
         [self restoreOriginalFileAtURL:self.modelsURL

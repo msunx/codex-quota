@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <code>v0.2.5</code>
+  <code>v0.2.6</code>
   <code>macOS 14+</code>
   <code>Apple Silicon</code>
   <code>AppKit</code>
@@ -35,7 +35,7 @@
 Codex Quota 把原本分散在命令行、配置文件和多个扩展目录里的日常操作，收进一个不占 Dock 位置的菜单栏面板：
 
 - **看额度**：显示 Codex 所有额度窗口、重置时间、剩余重置次数和可选的工作区余额；DeepSeek 模式显示官方接口返回的币种与余额。
-- **切来源**：在 Codex 订阅与 `deepseek-v4-flash` 之间切换，自动备份和恢复 Codex 配置，API Key 保存到 macOS 钥匙串。
+- **切来源**：在 Codex 订阅、`deepseek-v4-flash` 与 `deepseek-v4-pro` 之间切换，自动备份和恢复 Codex 配置，API Key 保存到 macOS 钥匙串。
 - **保留历史入口**：由 Codex Quota 重启 Codex 后，本机列表可以同时显示 `openai`、`deepseek` 和旧版 `custom` provider 的对话。
 - **管扩展**：只列第三方和自建 Skill / 插件，展示用途说明，检查新版本，并提供更新、Finder 定位和 Skill 完整卸载操作。
 
@@ -53,6 +53,12 @@ DeepSeek 模式需要 Codex `0.144.0` 或更新版本。如果尚未安装命令
 ```bash
 xcode-select --install
 ```
+
+### 下载应用
+
+从 [GitHub Releases](https://github.com/msunx/codex-quota/releases/latest) 下载 `Codex-Quota-v0.2.6-macos-arm64.zip`，解压后将 **Codex Quota.app** 拖入 `/Applications`。Release 同时提供 SHA-256 校验文件。
+
+应用使用 ad-hoc 签名且未公证；首次打开如被 macOS 拦截，请在“系统设置 → 隐私与安全性”中确认打开。
 
 ### 从源码构建
 
@@ -76,7 +82,7 @@ dist/Codex Quota.app
 
 1. 在菜单栏面板选择 **DeepSeek**；
 2. 输入或用 `⌘V` 粘贴 DeepSeek API Key；
-3. 保持模型为 `deepseek-v4-flash`；
+3. 按需要选择 `deepseek-v4-flash` 或 `deepseek-v4-pro`；
 4. 配置写入成功后选择 **立即重启**。
 
 切回 Codex 订阅时，应用会恢复切换前的配置。更换 API Key 或切换来源后选择“立即重启”，可以同时应用新模型配置和本机历史兼容桥。
@@ -124,7 +130,7 @@ npx @larksuite/cli@latest install
 
 ### DeepSeek 配置与余额
 
-切换前会备份 `~/.codex/config.toml` 和已有的 `models.json`，再写入 DeepSeek Responses API provider 与模型目录。余额只请求 DeepSeek 官方 `/user/balance`，API Key 同时按 Codex 接入要求写入配置，并保存到 macOS 钥匙串供再次切换使用。
+切换前会备份 `~/.codex/config.toml` 和已有的 `models.json`，再写入包含 `deepseek-v4-flash` 与 `deepseek-v4-pro` 的 DeepSeek Responses API provider 和模型目录。余额只请求 DeepSeek 官方 `/user/balance`，API Key 同时按 Codex 接入要求写入配置，并保存到 macOS 钥匙串供再次切换使用。
 
 ### 本机历史兼容桥
 
@@ -142,7 +148,7 @@ npx @larksuite/cli@latest install
 
 ## 当前限制
 
-- 仅构建 arm64 版本，当前版本为 `0.2.5`；
+- 仅构建 arm64 版本，当前版本为 `0.2.6`；
 - 不支持多账号切换；
 - 不包含应用自身自动更新、Mac App Store 分发或内置 Codex；
 - 没有来源元数据的本地 Skill 无法自动判断新版本；

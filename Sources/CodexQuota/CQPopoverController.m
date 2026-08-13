@@ -248,8 +248,7 @@ static NSStackView *CQHorizontal(void) {
     self.modelPopup = [NSPopUpButton new];
     self.modelPopup.autoenablesItems = NO;
     [self.modelPopup addItemWithTitle:CQDeepSeekFlashModel];
-    [self.modelPopup addItemWithTitle:@"deepseek-v4-pro（暂不可用）"];
-    self.modelPopup.lastItem.enabled = NO;
+    [self.modelPopup addItemWithTitle:CQDeepSeekProModel];
     self.modelPopup.target = self;
     self.modelPopup.action = @selector(modelChanged:);
     self.modelPopup.font = [NSFont monospacedSystemFontOfSize:11 weight:NSFontWeightMedium];

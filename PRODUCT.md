@@ -33,7 +33,7 @@ Codex 模式直接复用本机官方登录与 App Server 协议。DeepSeek 模�
 - 使用事件通知更新，并以 30 秒轮询兜底。
 - 自动发现 Codex 可执行文件，找不到时允许手动选择。
 - 支持官方 ChatGPT 浏览器登录流程。
-- 支持 Codex 默认订阅与 DeepSeek 之间切换；当前仅启用 `deepseek-v4-flash`，`deepseek-v4-pro` 保留为禁用选项。
+- 支持 Codex 默认订阅与 DeepSeek 之间切换，并可选择 `deepseek-v4-flash` 或 `deepseek-v4-pro`。
 - 支持 DeepSeek API Key 首次输入、钥匙串保存和随时更换，并显示官方余额接口返回的币种与剩余金额。
 - 模型来源切换完成后询问是否立即重启 Codex；切换 DeepSeek 时保留现有 ChatGPT 登录身份，并通过本地兼容桥统一显示 Codex、DeepSeek 与旧版 custom provider 的会话入口。
 - 提供第三方与自建 Skill / 插件管理页，排除系统自带扩展；每 6 小时自动检查更新，并允许用户打开本机安装目录、逐项一键更新或彻底卸载 Skill。
