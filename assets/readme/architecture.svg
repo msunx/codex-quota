@@ -1,115 +1,115 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-labelledby="title desc">
   <title id="title">Codex Quota 本地架构</title>
-  <desc id="desc">Codex App Server、DeepSeek 官方接口和本机扩展来源进入 Codex Quota，再分别驱动菜单栏状态、Codex 配置与历史入口，以及 Skill 和插件维护操作。</desc>
+  <desc id="desc">Codex App Server、DeepSeek 官方 API 和本机扩展来源进入 Codex Quota，再驱动菜单栏状态、Codex 配置、历史入口与扩展维护。</desc>
 
-  <rect width="1200" height="560" rx="28" fill="#24273A"/>
-  <rect x="1" y="1" width="1198" height="558" rx="27" fill="none" stroke="#363A4F" stroke-width="2"/>
+  <rect width="1200" height="600" rx="28" fill="#F2F2F0"/>
+  <rect x="1" y="1" width="1198" height="598" rx="27" fill="none" stroke="#D8D8D4" stroke-width="2"/>
 
   <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif">
-    <text x="54" y="60" fill="#CAD3F5" font-size="31" font-weight="750">三类本机输入，一个菜单栏控制面</text>
-    <text x="1146" y="58" text-anchor="end" fill="#A5ADCB" font-size="16" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">LOCAL FIRST · EXPLICIT WRITES</text>
+    <text x="54" y="62" fill="#18181A" font-size="36" font-weight="760">三类输入，一个本机控制面</text>
+    <text x="1146" y="60" text-anchor="end" fill="#66676D" font-size="18" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">LOCAL FIRST · EXPLICIT WRITES</text>
 
-    <text x="54" y="104" fill="#6E738D" font-size="14" font-weight="760" letter-spacing="2">INPUTS</text>
-    <text x="452" y="104" fill="#6E738D" font-size="14" font-weight="760" letter-spacing="2">CONTROL SURFACE</text>
-    <text x="878" y="104" fill="#6E738D" font-size="14" font-weight="760" letter-spacing="2">OUTPUTS</text>
+    <text x="54" y="108" fill="#92939A" font-size="18" font-weight="760" letter-spacing="2">INPUTS</text>
+    <text x="444" y="108" fill="#92939A" font-size="18" font-weight="760" letter-spacing="2">CONTROL SURFACE</text>
+    <text x="870" y="108" fill="#92939A" font-size="18" font-weight="760" letter-spacing="2">OUTPUTS</text>
 
-    <g transform="translate(54 126)">
-      <rect width="292" height="100" rx="17" fill="#1E2030" stroke="#C59FF7" stroke-width="2"/>
-      <circle cx="28" cy="31" r="7" fill="#C59FF7"/>
-      <text x="48" y="38" fill="#CAD3F5" font-size="20" font-weight="720">Codex App Server</text>
-      <text x="24" y="68" fill="#A5ADCB" font-size="16">账号 · 额度窗口 · 实时事件</text>
-      <text x="24" y="90" fill="#6E738D" font-size="14">本机 JSON-RPC / stdio</text>
+    <g transform="translate(54 132)">
+      <rect width="298" height="104" rx="17" fill="#FFFFFF" stroke="#2F7DF6" stroke-width="2"/>
+      <circle cx="28" cy="31" r="7" fill="#2F7DF6"/>
+      <text x="48" y="39" fill="#18181A" font-size="21" font-weight="720">Codex App Server</text>
+      <text x="24" y="72" fill="#66676D" font-size="18">账号 · 额度窗口 · 实时事件</text>
+      <text x="24" y="96" fill="#92939A" font-size="18">本机 JSON-RPC / stdio</text>
     </g>
 
-    <g transform="translate(54 248)">
-      <rect width="292" height="100" rx="17" fill="#1E2030" stroke="#A6DA95" stroke-width="2"/>
-      <circle cx="28" cy="31" r="7" fill="#A6DA95"/>
-      <text x="48" y="38" fill="#CAD3F5" font-size="20" font-weight="720">DeepSeek 官方 API</text>
-      <text x="24" y="68" fill="#A5ADCB" font-size="16">币种 · 余额 · API Key 校验</text>
-      <text x="24" y="90" fill="#6E738D" font-size="14">/user/balance</text>
+    <g transform="translate(54 260)">
+      <rect width="298" height="104" rx="17" fill="#FFFFFF" stroke="#7C3AED" stroke-width="2"/>
+      <circle cx="28" cy="31" r="7" fill="#7C3AED"/>
+      <text x="48" y="39" fill="#18181A" font-size="21" font-weight="720">DeepSeek 官方 API</text>
+      <text x="24" y="72" fill="#66676D" font-size="18">币种 · 余额 · API Key 校验</text>
+      <text x="24" y="96" fill="#92939A" font-size="18">/user/balance</text>
     </g>
 
-    <g transform="translate(54 370)">
-      <rect width="292" height="118" rx="17" fill="#1E2030" stroke="#EED49F" stroke-width="2"/>
-      <circle cx="28" cy="31" r="7" fill="#EED49F"/>
-      <text x="48" y="38" fill="#CAD3F5" font-size="20" font-weight="720">扩展来源</text>
-      <text x="24" y="68" fill="#A5ADCB" font-size="16">GitHub · Well-known · 本地</text>
-      <text x="24" y="92" fill="#A5ADCB" font-size="16">Codex 插件市场 · lark-cli</text>
+    <g transform="translate(54 388)">
+      <rect width="298" height="118" rx="17" fill="#FFFFFF" stroke="#D97706" stroke-width="2"/>
+      <circle cx="28" cy="31" r="7" fill="#D97706"/>
+      <text x="48" y="39" fill="#18181A" font-size="21" font-weight="720">本机扩展来源</text>
+      <text x="24" y="74" fill="#66676D" font-size="18">GitHub · Well-known · 本地</text>
+      <text x="24" y="102" fill="#66676D" font-size="18">插件市场 · lark-cli</text>
     </g>
 
-    <path d="M346 176H420" stroke="#C59FF7" stroke-width="3"/>
-    <path d="M408 168L422 176L408 184Z" fill="#C59FF7"/>
-    <path d="M346 298H420" stroke="#A6DA95" stroke-width="3"/>
-    <path d="M408 290L422 298L408 306Z" fill="#A6DA95"/>
-    <path d="M346 429H420" stroke="#EED49F" stroke-width="3"/>
-    <path d="M408 421L422 429L408 437Z" fill="#EED49F"/>
+    <path d="M352 184H420" stroke="#2F7DF6" stroke-width="3"/>
+    <path d="M407 176L422 184L407 192Z" fill="#2F7DF6"/>
+    <path d="M352 312H420" stroke="#7C3AED" stroke-width="3"/>
+    <path d="M407 304L422 312L407 320Z" fill="#7C3AED"/>
+    <path d="M352 447H420" stroke="#D97706" stroke-width="3"/>
+    <path d="M407 439L422 447L407 455Z" fill="#D97706"/>
 
-    <g transform="translate(422 116)">
-      <rect width="354" height="382" rx="22" fill="#1E2030" stroke="#363A4F" stroke-width="2"/>
-      <text x="28" y="47" fill="#CAD3F5" font-size="25" font-weight="750">Codex Quota</text>
-      <rect x="255" y="20" width="72" height="30" rx="10" fill="#363A4F"/>
-      <text x="291" y="40" text-anchor="middle" fill="#B7BDF8" font-size="14" font-weight="720">AppKit</text>
+    <g transform="translate(422 122)">
+      <rect width="358" height="394" rx="22" fill="#FAFAF8" stroke="#D8D8D4" stroke-width="2"/>
+      <text x="28" y="48" fill="#18181A" font-size="27" font-weight="760">Codex Quota</text>
+      <rect x="260" y="20" width="72" height="32" rx="11" fill="#18181A"/>
+      <text x="296" y="42" text-anchor="middle" fill="#FFFFFF" font-size="17" font-weight="720">AppKit</text>
 
-      <g transform="translate(26 74)">
-        <rect width="302" height="60" rx="13" fill="#24273A"/>
-        <circle cx="23" cy="30" r="6" fill="#C59FF7"/>
-        <text x="42" y="27" fill="#CAD3F5" font-size="17" font-weight="700">额度状态</text>
-        <text x="42" y="47" fill="#6E738D" font-size="13">事件更新 + 30 秒校准 + 退避重试</text>
+      <g transform="translate(26 76)">
+        <rect width="306" height="64" rx="14" fill="#FFFFFF" stroke="#E4E4E0"/>
+        <circle cx="24" cy="32" r="6" fill="#2F7DF6"/>
+        <text x="44" y="29" fill="#18181A" font-size="19" font-weight="700">额度状态</text>
+        <text x="44" y="52" fill="#66676D" font-size="18">事件更新 + 30 秒校准</text>
       </g>
 
-      <g transform="translate(26 146)">
-        <rect width="302" height="60" rx="13" fill="#24273A"/>
-        <circle cx="23" cy="30" r="6" fill="#A6DA95"/>
-        <text x="42" y="27" fill="#CAD3F5" font-size="17" font-weight="700">模型配置</text>
-        <text x="42" y="47" fill="#6E738D" font-size="13">备份 / 写入 / 恢复 · Keychain</text>
+      <g transform="translate(26 152)">
+        <rect width="306" height="64" rx="14" fill="#FFFFFF" stroke="#E4E4E0"/>
+        <circle cx="24" cy="32" r="6" fill="#7C3AED"/>
+        <text x="44" y="29" fill="#18181A" font-size="19" font-weight="700">模型配置</text>
+        <text x="44" y="52" fill="#66676D" font-size="18">备份 · 写入 · 恢复 · Keychain</text>
       </g>
 
-      <g transform="translate(26 218)">
-        <rect width="302" height="60" rx="13" fill="#24273A"/>
-        <circle cx="23" cy="30" r="6" fill="#B7BDF8"/>
-        <text x="42" y="27" fill="#CAD3F5" font-size="17" font-weight="700">历史兼容桥</text>
-        <text x="42" y="47" fill="#6E738D" font-size="13">仅补充 thread/list provider 条件</text>
+      <g transform="translate(26 228)">
+        <rect width="306" height="64" rx="14" fill="#FFFFFF" stroke="#E4E4E0"/>
+        <circle cx="24" cy="32" r="6" fill="#E11D48"/>
+        <text x="44" y="29" fill="#18181A" font-size="19" font-weight="700">历史兼容桥</text>
+        <text x="44" y="52" fill="#66676D" font-size="18">仅补充 thread/list provider</text>
       </g>
 
-      <g transform="translate(26 290)">
-        <rect width="302" height="66" rx="13" fill="#24273A"/>
-        <circle cx="23" cy="30" r="6" fill="#EED49F"/>
-        <text x="42" y="27" fill="#CAD3F5" font-size="17" font-weight="700">扩展维护</text>
-        <text x="42" y="47" fill="#6E738D" font-size="13">识别 · 检查 · 更新 · 打开 · 卸载</text>
+      <g transform="translate(26 304)">
+        <rect width="306" height="64" rx="14" fill="#FFFFFF" stroke="#E4E4E0"/>
+        <circle cx="24" cy="32" r="6" fill="#D97706"/>
+        <text x="44" y="29" fill="#18181A" font-size="19" font-weight="700">扩展维护</text>
+        <text x="44" y="52" fill="#66676D" font-size="18">识别 · 检查 · 更新 · 卸载</text>
       </g>
     </g>
 
-    <path d="M776 176H850" stroke="#C59FF7" stroke-width="3"/>
-    <path d="M838 168L852 176L838 184Z" fill="#C59FF7"/>
-    <path d="M776 298H850" stroke="#A6DA95" stroke-width="3"/>
-    <path d="M838 290L852 298L838 306Z" fill="#A6DA95"/>
-    <path d="M776 429H850" stroke="#EED49F" stroke-width="3"/>
-    <path d="M838 421L852 429L838 437Z" fill="#EED49F"/>
+    <path d="M780 184H848" stroke="#2F7DF6" stroke-width="3"/>
+    <path d="M835 176L850 184L835 192Z" fill="#2F7DF6"/>
+    <path d="M780 312H848" stroke="#7C3AED" stroke-width="3"/>
+    <path d="M835 304L850 312L835 320Z" fill="#7C3AED"/>
+    <path d="M780 447H848" stroke="#D97706" stroke-width="3"/>
+    <path d="M835 439L850 447L835 455Z" fill="#D97706"/>
 
-    <g transform="translate(852 126)">
-      <rect width="294" height="100" rx="17" fill="#1E2030" stroke="#363A4F"/>
-      <text x="24" y="35" fill="#CAD3F5" font-size="20" font-weight="720">菜单栏状态</text>
-      <rect x="24" y="52" width="246" height="30" rx="15" fill="#24273A"/>
-      <circle cx="43" cy="67" r="5" fill="#C59FF7"/>
-      <text x="57" y="73" fill="#A5ADCB" font-size="15">Codex</text>
-      <text x="251" y="73" text-anchor="end" fill="#C59FF7" font-size="16" font-weight="740">74%</text>
+    <g transform="translate(850 132)">
+      <rect width="296" height="104" rx="17" fill="#FFFFFF" stroke="#D8D8D4"/>
+      <text x="24" y="38" fill="#18181A" font-size="21" font-weight="720">菜单栏状态</text>
+      <rect x="24" y="56" width="248" height="30" rx="15" fill="#F2F2F0"/>
+      <circle cx="43" cy="71" r="5" fill="#E11D48"/>
+      <text x="59" y="77" fill="#66676D" font-size="18">Codex</text>
+      <text x="250" y="77" text-anchor="end" fill="#E11D48" font-size="19" font-weight="740">12%</text>
     </g>
 
-    <g transform="translate(852 248)">
-      <rect width="294" height="100" rx="17" fill="#1E2030" stroke="#363A4F"/>
-      <text x="24" y="35" fill="#CAD3F5" font-size="20" font-weight="720">Codex Desktop</text>
-      <text x="24" y="65" fill="#A5ADCB" font-size="16">应用新模型配置</text>
-      <text x="24" y="87" fill="#6E738D" font-size="14">统一显示本机 provider 历史</text>
+    <g transform="translate(850 260)">
+      <rect width="296" height="104" rx="17" fill="#FFFFFF" stroke="#D8D8D4"/>
+      <text x="24" y="38" fill="#18181A" font-size="21" font-weight="720">Codex Desktop</text>
+      <text x="24" y="70" fill="#66676D" font-size="18">应用模型配置</text>
+      <text x="24" y="95" fill="#92939A" font-size="18">统一本机历史入口</text>
     </g>
 
-    <g transform="translate(852 370)">
-      <rect width="294" height="118" rx="17" fill="#1E2030" stroke="#363A4F"/>
-      <text x="24" y="35" fill="#CAD3F5" font-size="20" font-weight="720">本机扩展目录</text>
-      <text x="24" y="65" fill="#A5ADCB" font-size="16">按来源更新 · Finder 定位</text>
-      <text x="24" y="91" fill="#A5ADCB" font-size="16">完整目录 + 安装记录清理</text>
+    <g transform="translate(850 388)">
+      <rect width="296" height="118" rx="17" fill="#FFFFFF" stroke="#D8D8D4"/>
+      <text x="24" y="38" fill="#18181A" font-size="21" font-weight="720">本机扩展目录</text>
+      <text x="24" y="72" fill="#66676D" font-size="18">按来源更新 · Finder 定位</text>
+      <text x="24" y="100" fill="#66676D" font-size="18">完整卸载 + 安装记录清理</text>
     </g>
 
-    <text x="54" y="530" fill="#A5ADCB" font-size="16">默认只读；配置切换、扩展更新与卸载都由用户明确触发。</text>
-    <text x="1146" y="530" text-anchor="end" fill="#6E738D" font-size="15">不改写会话数据库 · 不记录对话正文</text>
+    <text x="54" y="560" fill="#66676D" font-size="18">默认只读；所有写入操作均由用户明确触发。</text>
+    <text x="1146" y="560" text-anchor="end" fill="#92939A" font-size="18">不改写会话数据库 · 不记录对话正文</text>
   </g>
 </svg>
