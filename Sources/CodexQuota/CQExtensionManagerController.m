@@ -6,7 +6,7 @@
 static NSView *CQExtensionDivider(void) {
     NSView *view = [NSView new];
     view.wantsLayer = YES;
-    view.layer.backgroundColor = [CQTheme.surface colorWithAlphaComponent:0.9].CGColor;
+    view.layer.backgroundColor = [CQTheme.overlay colorWithAlphaComponent:0.20].CGColor;
     [view.heightAnchor constraintEqualToConstant:1].active = YES;
     return view;
 }
@@ -52,8 +52,8 @@ static NSStackView *CQExtensionHorizontal(void) {
     self.item = item;
     self.orientation = NSUserInterfaceLayoutOrientationVertical;
     self.alignment = NSLayoutAttributeLeading;
-    self.spacing = 5;
-    self.edgeInsets = NSEdgeInsetsMake(3, 0, 4, 0);
+    self.spacing = 6;
+    self.edgeInsets = NSEdgeInsetsMake(5, 0, 6, 0);
 
     NSStackView *titleRow = CQExtensionHorizontal();
     self.nameLabel = CQLabel(@"", [NSFont systemFontOfSize:13 weight:NSFontWeightSemibold], CQTheme.text);
@@ -254,10 +254,8 @@ static NSStackView *CQExtensionHorizontal(void) {
 }
 
 - (void)loadView {
-    NSView *root = [NSView new];
-    root.wantsLayer = YES;
-    root.layer.backgroundColor = CQTheme.base.CGColor;
-    root.appearance = [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
+    NSView *root = CQWindowGlassView();
+    root.appearance = [NSAppearance appearanceNamed:NSAppearanceNameAqua];
     self.view = root;
     self.preferredContentSize = NSMakeSize(360, 500);
 
@@ -265,7 +263,7 @@ static NSStackView *CQExtensionHorizontal(void) {
     header.translatesAutoresizingMaskIntoConstraints = NO;
     NSButton *back = CQButton(@"返回", @"chevron.left", self, @selector(back:));
     [header addArrangedSubview:back];
-    NSTextField *title = CQLabel(@"扩展管理", [NSFont systemFontOfSize:17 weight:NSFontWeightSemibold], CQTheme.text);
+    NSTextField *title = CQLabel(@"扩展管理", [NSFont systemFontOfSize:20 weight:NSFontWeightSemibold], CQTheme.text);
     [header addArrangedSubview:title];
     NSView *headerSpacer = [NSView new];
     [headerSpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
@@ -282,17 +280,22 @@ static NSStackView *CQExtensionHorizontal(void) {
                                                             trackingMode:NSSegmentSwitchTrackingSelectOne
                                                                   target:self
                                                                   action:@selector(filterChanged:)];
-    self.filterControl.segmentStyle = NSSegmentStyleRounded;
+    self.filterControl.segmentStyle = NSSegmentStyleCapsule;
+    self.filterControl.controlSize = NSControlSizeRegular;
     self.filterControl.selectedSegment = 0;
     self.filterControl.translatesAutoresizingMaskIntoConstraints = NO;
     [root addSubview:self.filterControl];
+
+    NSView *listSurface = CQSurface(16);
+    listSurface.translatesAutoresizingMaskIntoConstraints = NO;
+    [root addSubview:listSurface];
 
     NSScrollView *scroll = [NSScrollView new];
     scroll.drawsBackground = NO;
     scroll.hasVerticalScroller = YES;
     scroll.autohidesScrollers = YES;
     scroll.translatesAutoresizingMaskIntoConstraints = NO;
-    [root addSubview:scroll];
+    [listSurface addSubview:scroll];
 
     CQExtensionsFlippedView *document = [CQExtensionsFlippedView new];
     document.translatesAutoresizingMaskIntoConstraints = NO;
@@ -304,10 +307,12 @@ static NSStackView *CQExtensionHorizontal(void) {
     self.listStack.translatesAutoresizingMaskIntoConstraints = NO;
     [document addSubview:self.listStack];
 
-    NSView *footer = [NSView new];
+    NSVisualEffectView *footer = CQGlassView(NSVisualEffectMaterialHeaderView, 16);
     footer.translatesAutoresizingMaskIntoConstraints = NO;
-    footer.wantsLayer = YES;
-    footer.layer.backgroundColor = CQTheme.mantle.CGColor;
+    footer.layer.shadowColor = NSColor.blackColor.CGColor;
+    footer.layer.shadowOpacity = 0.10;
+    footer.layer.shadowRadius = 14;
+    footer.layer.shadowOffset = CGSizeMake(0, -4);
     [root addSubview:footer];
     NSStackView *footerStack = [NSStackView new];
     footerStack.orientation = NSUserInterfaceLayoutOrientationHorizontal;
@@ -320,7 +325,8 @@ static NSStackView *CQExtensionHorizontal(void) {
     NSView *footerSpacer = [NSView new];
     [footerSpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
     [footerStack addArrangedSubview:footerSpacer];
-    self.checkButton = CQButton(@"检查更新", @"arrow.clockwise", self, @selector(check:));
+    self.checkButton = CQPrimaryButton(@"检查更新", @"arrow.clockwise", self, @selector(check:));
+    [self.checkButton.widthAnchor constraintGreaterThanOrEqualToConstant:94].active = YES;
     [footerStack addArrangedSubview:self.checkButton];
 
     self.errorLabel = CQLabel(@"", [NSFont systemFontOfSize:10], CQTheme.red);
@@ -335,7 +341,7 @@ static NSStackView *CQExtensionHorizontal(void) {
     [NSLayoutConstraint activateConstraints:@[
         [header.leadingAnchor constraintEqualToAnchor:root.leadingAnchor constant:14],
         [header.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-14],
-        [header.topAnchor constraintEqualToAnchor:root.topAnchor constant:14],
+        [header.topAnchor constraintEqualToAnchor:root.topAnchor constant:18],
         [self.summaryLabel.leadingAnchor constraintEqualToAnchor:root.leadingAnchor constant:16],
         [self.summaryLabel.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-16],
         [self.summaryLabel.topAnchor constraintEqualToAnchor:header.bottomAnchor constant:8],
@@ -345,22 +351,26 @@ static NSStackView *CQExtensionHorizontal(void) {
         [self.errorLabel.leadingAnchor constraintEqualToAnchor:root.leadingAnchor constant:16],
         [self.errorLabel.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-16],
         [self.errorLabel.topAnchor constraintEqualToAnchor:self.filterControl.bottomAnchor constant:6],
-        [scroll.leadingAnchor constraintEqualToAnchor:root.leadingAnchor],
-        [scroll.trailingAnchor constraintEqualToAnchor:root.trailingAnchor],
-        [scroll.topAnchor constraintEqualToAnchor:self.errorLabel.bottomAnchor constant:6],
-        [scroll.bottomAnchor constraintEqualToAnchor:footer.topAnchor],
+        [listSurface.leadingAnchor constraintEqualToAnchor:root.leadingAnchor constant:10],
+        [listSurface.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-10],
+        [listSurface.topAnchor constraintEqualToAnchor:self.errorLabel.bottomAnchor constant:8],
+        [listSurface.bottomAnchor constraintEqualToAnchor:footer.topAnchor constant:-6],
+        [scroll.leadingAnchor constraintEqualToAnchor:listSurface.leadingAnchor],
+        [scroll.trailingAnchor constraintEqualToAnchor:listSurface.trailingAnchor],
+        [scroll.topAnchor constraintEqualToAnchor:listSurface.topAnchor constant:6],
+        [scroll.bottomAnchor constraintEqualToAnchor:listSurface.bottomAnchor constant:-6],
         [document.leadingAnchor constraintEqualToAnchor:scroll.contentView.leadingAnchor],
         [document.trailingAnchor constraintEqualToAnchor:scroll.contentView.trailingAnchor],
         [document.topAnchor constraintEqualToAnchor:scroll.contentView.topAnchor],
         [document.widthAnchor constraintEqualToAnchor:scroll.contentView.widthAnchor],
-        [self.listStack.leadingAnchor constraintEqualToAnchor:document.leadingAnchor constant:16],
-        [self.listStack.trailingAnchor constraintEqualToAnchor:document.trailingAnchor constant:-16],
+        [self.listStack.leadingAnchor constraintEqualToAnchor:document.leadingAnchor constant:14],
+        [self.listStack.trailingAnchor constraintEqualToAnchor:document.trailingAnchor constant:-14],
         [self.listStack.topAnchor constraintEqualToAnchor:document.topAnchor constant:8],
         [self.listStack.bottomAnchor constraintEqualToAnchor:document.bottomAnchor constant:-14],
-        [footer.leadingAnchor constraintEqualToAnchor:root.leadingAnchor],
-        [footer.trailingAnchor constraintEqualToAnchor:root.trailingAnchor],
-        [footer.bottomAnchor constraintEqualToAnchor:root.bottomAnchor],
-        [footer.heightAnchor constraintEqualToConstant:56],
+        [footer.leadingAnchor constraintEqualToAnchor:root.leadingAnchor constant:10],
+        [footer.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-10],
+        [footer.bottomAnchor constraintEqualToAnchor:root.bottomAnchor constant:-10],
+        [footer.heightAnchor constraintEqualToConstant:58],
         [footerStack.leadingAnchor constraintEqualToAnchor:footer.leadingAnchor constant:16],
         [footerStack.trailingAnchor constraintEqualToAnchor:footer.trailingAnchor constant:-16],
         [footerStack.centerYAnchor constraintEqualToAnchor:footer.centerYAnchor]

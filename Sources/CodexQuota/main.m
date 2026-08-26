@@ -123,6 +123,8 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
                     backing:NSBackingStoreBuffered
                       defer:NO];
     self.previewWindow.title = @"Codex Quota · 界面预览";
+    self.previewWindow.opaque = NO;
+    self.previewWindow.backgroundColor = NSColor.clearColor;
     self.previewWindow.level = NSFloatingWindowLevel;
     self.previewWindow.collectionBehavior = NSWindowCollectionBehaviorCanJoinAllSpaces
         | NSWindowCollectionBehaviorFullScreenAuxiliary;
@@ -144,18 +146,30 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
 
     CQRateLimitWindow *shortWindow = [CQRateLimitWindow new];
     shortWindow.limitID = @"preview-primary";
-    shortWindow.name = @"Codex · 5 小时";
+    shortWindow.name = @"GPT-5.3-Codex-Spark · 5 小时";
     shortWindow.usedPercent = 26;
     shortWindow.durationMinutes = 300;
     shortWindow.resetsAt = [NSDate dateWithTimeIntervalSinceNow:78 * 60];
     CQRateLimitWindow *weeklyWindow = [CQRateLimitWindow new];
     weeklyWindow.limitID = @"preview-secondary";
-    weeklyWindow.name = @"Codex · 7 天";
+    weeklyWindow.name = @"GPT-5.3-Codex-Spark · 7 天";
     weeklyWindow.usedPercent = 68;
     weeklyWindow.durationMinutes = 7 * 24 * 60;
     weeklyWindow.resetsAt = [NSDate dateWithTimeIntervalSinceNow:3 * 24 * 3600];
+    CQRateLimitWindow *monthlyWindow = [CQRateLimitWindow new];
+    monthlyWindow.limitID = @"preview-monthly";
+    monthlyWindow.name = @"GPT-5.3-Codex-Spark · 30 天";
+    monthlyWindow.usedPercent = 0;
+    monthlyWindow.durationMinutes = 30 * 24 * 60;
+    monthlyWindow.resetsAt = [NSDate dateWithTimeIntervalSinceNow:12 * 24 * 3600];
+    CQRateLimitWindow *reserveWindow = [CQRateLimitWindow new];
+    reserveWindow.limitID = @"preview-reserve";
+    reserveWindow.name = @"GPT Reserve · 7 天";
+    reserveWindow.usedPercent = 88;
+    reserveWindow.durationMinutes = 7 * 24 * 60;
+    reserveWindow.resetsAt = [NSDate dateWithTimeIntervalSinceNow:2 * 24 * 3600];
     CQQuotaSnapshot *snapshot = [CQQuotaSnapshot new];
-    snapshot.windows = @[shortWindow, weeklyWindow];
+    snapshot.windows = @[shortWindow, weeklyWindow, monthlyWindow, reserveWindow];
     snapshot.planType = @"Plus";
     snapshot.resetCreditsAvailable = @3;
     snapshot.hasWorkspaceCredits = YES;
@@ -349,7 +363,8 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
 }
 
 - (void)popoverDidShow:(NSNotification *)notification {
-    [self.popover.contentViewController.view.window makeKeyWindow];
+    NSWindow *window = self.popover.contentViewController.view.window;
+    [window makeKeyWindow];
 }
 
 - (void)systemDidWake:(NSNotification *)notification {
