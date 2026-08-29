@@ -295,18 +295,18 @@ NSView *CQDashboardGlassSurface(CGFloat cornerRadius) {
     backdrop.state = NSVisualEffectStateActive;
     backdrop.preferredCornerRadius = cornerRadius;
     BOOL reduceTransparency = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceTransparency;
-    backdrop.alphaValue = reduceTransparency ? 1.0 : 0.84;
-    backdrop.layer.backgroundColor = [CQTheme.panel colorWithAlphaComponent:reduceTransparency ? 0.98 : 0.22].CGColor;
+    backdrop.alphaValue = reduceTransparency ? 1.0 : 0.46;
+    backdrop.layer.backgroundColor = [CQTheme.panel colorWithAlphaComponent:reduceTransparency ? 0.98 : 0.04].CGColor;
     backdrop.layer.borderWidth = 0.7;
-    backdrop.layer.borderColor = [NSColor.whiteColor colorWithAlphaComponent:reduceTransparency ? 0.84 : 0.66].CGColor;
+    backdrop.layer.borderColor = [NSColor.whiteColor colorWithAlphaComponent:reduceTransparency ? 0.84 : 0.38].CGColor;
     backdrop.layer.shadowColor = NSColor.blackColor.CGColor;
     backdrop.layer.shadowOpacity = 0.08;
     backdrop.layer.shadowRadius = 10;
     backdrop.layer.shadowOffset = CGSizeMake(0, -3);
     backdrop.sheenLayer.colors = @[
-        (id)[NSColor.whiteColor colorWithAlphaComponent:0.25].CGColor,
-        (id)[NSColor.whiteColor colorWithAlphaComponent:0.04].CGColor,
-        (id)[CQTheme.accent colorWithAlphaComponent:0.04].CGColor
+        (id)[NSColor.whiteColor colorWithAlphaComponent:0.08].CGColor,
+        (id)[NSColor.whiteColor colorWithAlphaComponent:0.01].CGColor,
+        (id)[CQTheme.accent colorWithAlphaComponent:0.012].CGColor
     ];
     [container addSubview:backdrop];
     [NSLayoutConstraint activateConstraints:@[
@@ -326,11 +326,11 @@ NSVisualEffectView *CQGlassView(NSVisualEffectMaterial material, CGFloat cornerR
     view.wantsLayer = YES;
     view.preferredCornerRadius = cornerRadius;
     BOOL reduceTransparency = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceTransparency;
-    view.layer.backgroundColor = [CQTheme.mantle colorWithAlphaComponent:reduceTransparency ? 0.98 : 0.46].CGColor;
+    view.layer.backgroundColor = [CQTheme.mantle colorWithAlphaComponent:reduceTransparency ? 0.98 : 0.10].CGColor;
     view.layer.cornerRadius = cornerRadius;
     view.layer.cornerCurve = kCACornerCurveContinuous;
     view.layer.borderWidth = 0.7;
-    view.layer.borderColor = [NSColor.whiteColor colorWithAlphaComponent:reduceTransparency ? 0.82 : 0.72].CGColor;
+    view.layer.borderColor = [NSColor.whiteColor colorWithAlphaComponent:reduceTransparency ? 0.82 : 0.38].CGColor;
     return view;
 }
 
@@ -346,7 +346,7 @@ NSView *CQWindowGlassView(void) {
     backdrop.preferredCornerRadius = 0;
     backdrop.configuresHostingWindow = YES;
     BOOL reduceTransparency = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceTransparency;
-    backdrop.alphaValue = reduceTransparency ? 1.0 : 0.74;
+    backdrop.alphaValue = reduceTransparency ? 1.0 : 0.38;
     backdrop.layer.backgroundColor = reduceTransparency
         ? [CQTheme.base colorWithAlphaComponent:0.96].CGColor
         : NSColor.clearColor.CGColor;

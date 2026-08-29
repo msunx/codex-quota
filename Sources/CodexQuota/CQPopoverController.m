@@ -9,6 +9,7 @@
 
 @implementation CQProgressView {
     CAShapeLayer *_trackLayer;
+    CAShapeLayer *_glowLayer;
     CALayer *_revealLayer;
     CAGradientLayer *_fillLayer;
     CAShapeLayer *_segmentMask;
@@ -21,6 +22,11 @@
         _trackLayer = [CAShapeLayer layer];
         _trackLayer.fillColor = [CQTheme.surface colorWithAlphaComponent:0.88].CGColor;
         [self.layer addSublayer:_trackLayer];
+
+        _glowLayer = [CAShapeLayer layer];
+        _glowLayer.shadowOffset = CGSizeZero;
+        _glowLayer.shadowRadius = 4.0;
+        [self.layer addSublayer:_glowLayer];
 
         _revealLayer = [CALayer layer];
         _revealLayer.anchorPoint = CGPointMake(0, 0.5);
@@ -57,15 +63,21 @@
     CGFloat width = self.bounds.size.width;
     CGFloat height = self.bounds.size.height;
     CGFloat segmentWidth = MAX(1, (width - gap * (segmentCount - 1)) / segmentCount);
+    NSInteger filledSegments = (NSInteger)llround(MAX(0, MIN(1, self.progress)) * segmentCount);
     CGMutablePathRef path = CGPathCreateMutable();
+    CGMutablePathRef glowPath = CGPathCreateMutable();
     for (NSInteger index = 0; index < segmentCount; index++) {
         CGRect rect = CGRectMake(index * (segmentWidth + gap), 0, segmentWidth, height);
         CGPathAddRoundedRect(path, NULL, rect, 2.75, 2.75);
+        if (index < filledSegments) CGPathAddRoundedRect(glowPath, NULL, rect, 2.75, 2.75);
     }
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     _trackLayer.frame = self.bounds;
     _trackLayer.path = path;
+    _glowLayer.frame = self.bounds;
+    _glowLayer.path = glowPath;
+    _glowLayer.shadowPath = glowPath;
     _revealLayer.position = CGPointMake(0, height / 2.0);
     _revealLayer.bounds = CGRectMake(0, 0, [self revealWidthForProgress:self.progress], height);
     _fillLayer.frame = self.bounds;
@@ -73,6 +85,7 @@
     _segmentMask.path = path;
     [CATransaction commit];
     CGPathRelease(path);
+    CGPathRelease(glowPath);
 }
 - (void)setProgress:(double)progress color:(NSColor *)color animated:(BOOL)animated {
     progress = MAX(0, MIN(1, progress));
@@ -81,6 +94,15 @@
     _fillLayer.colors = @[(id)gradientStart.CGColor, (id)color.CGColor, (id)gradientEnd.CGColor];
     _fillLayer.locations = @[@0, @0.58, @1];
     _fillLayer.endPoint = CGPointMake(MAX(progress, 0.01), 0.5);
+    BOOL increaseContrast = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldIncreaseContrast;
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    _glowLayer.fillColor = [color colorWithAlphaComponent:increaseContrast ? 0.10 : 0.18].CGColor;
+    _glowLayer.shadowColor = color.CGColor;
+    _glowLayer.shadowOpacity = progress > 0 ? (increaseContrast ? 0.20 : 0.42) : 0;
+    [CATransaction commit];
+    self.progress = progress;
+    [self setNeedsLayout:YES];
     [self layoutSubtreeIfNeeded];
     CGFloat width = [self revealWidthForProgress:progress];
     BOOL reduceMotion = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceMotion;
@@ -93,7 +115,6 @@
         animation.timingFunction = [CAMediaTimingFunction functionWithControlPoints:0.77 :0 :0.175 :1];
         [_revealLayer addAnimation:animation forKey:@"quota"];
     }
-    self.progress = progress;
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     _revealLayer.bounds = CGRectMake(0, 0, width, self.bounds.size.height);
