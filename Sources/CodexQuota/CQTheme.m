@@ -48,9 +48,9 @@ static CAMediaTimingFunction *CQEaseOutTimingFunction(void) {
     _sheenLayer.startPoint = CGPointMake(0.04, 0.0);
     _sheenLayer.endPoint = CGPointMake(0.96, 1.0);
     _sheenLayer.colors = @[
-        (id)[NSColor.whiteColor colorWithAlphaComponent:0.46].CGColor,
-        (id)[NSColor.whiteColor colorWithAlphaComponent:0.08].CGColor,
-        (id)[CQTheme.accent colorWithAlphaComponent:0.07].CGColor
+        (id)[NSColor.whiteColor colorWithAlphaComponent:0.28].CGColor,
+        (id)[NSColor.whiteColor colorWithAlphaComponent:0.035].CGColor,
+        (id)[CQTheme.accent colorWithAlphaComponent:0.025].CGColor
     ];
     _sheenLayer.locations = @[@0.0, @0.52, @1.0];
     [self.layer addSublayer:_sheenLayer];
@@ -113,10 +113,10 @@ static CAMediaTimingFunction *CQEaseOutTimingFunction(void) {
     glass.alphaValue = 0.0;
     BOOL reduceTransparency = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceTransparency;
     glass.layer.backgroundColor = reduceTransparency
-        ? [NSColor.whiteColor colorWithAlphaComponent:0.94].CGColor
-        : [CQTheme.accent colorWithAlphaComponent:0.09].CGColor;
+        ? [NSColor.whiteColor colorWithAlphaComponent:0.98].CGColor
+        : [CQTheme.mantle colorWithAlphaComponent:0.88].CGColor;
     glass.layer.borderWidth = 0.7;
-    glass.layer.borderColor = [NSColor.whiteColor colorWithAlphaComponent:reduceTransparency ? 0.86 : 0.78].CGColor;
+    glass.layer.borderColor = [NSColor.blackColor colorWithAlphaComponent:reduceTransparency ? 0.10 : 0.07].CGColor;
     glass.layer.shadowColor = NSColor.blackColor.CGColor;
     glass.layer.shadowOpacity = 0.10;
     glass.layer.shadowRadius = 7;
@@ -272,7 +272,7 @@ NSButton *CQPrimaryButton(NSString *title, NSString *symbolName, id target, SEL 
 NSView *CQSurface(CGFloat cornerRadius) {
     NSView *view = [NSView new];
     view.wantsLayer = YES;
-    view.layer.backgroundColor = [CQTheme.panel colorWithAlphaComponent:0.98].CGColor;
+    view.layer.backgroundColor = [CQTheme.panel colorWithAlphaComponent:0.99].CGColor;
     view.layer.cornerRadius = cornerRadius;
     view.layer.cornerCurve = kCACornerCurveContinuous;
     view.layer.borderWidth = 0.5;
@@ -295,18 +295,20 @@ NSView *CQDashboardGlassSurface(CGFloat cornerRadius) {
     backdrop.state = NSVisualEffectStateActive;
     backdrop.preferredCornerRadius = cornerRadius;
     BOOL reduceTransparency = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceTransparency;
+    BOOL increaseContrast = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldIncreaseContrast;
     backdrop.alphaValue = 1.0;
-    backdrop.layer.backgroundColor = [CQTheme.panel colorWithAlphaComponent:reduceTransparency ? 0.98 : 0.88].CGColor;
+    CGFloat fillAlpha = reduceTransparency ? 0.995 : (increaseContrast ? 0.985 : 0.955);
+    backdrop.layer.backgroundColor = [CQTheme.panel colorWithAlphaComponent:fillAlpha].CGColor;
     backdrop.layer.borderWidth = 0.7;
-    backdrop.layer.borderColor = [NSColor.whiteColor colorWithAlphaComponent:reduceTransparency ? 0.84 : 0.38].CGColor;
+    backdrop.layer.borderColor = [NSColor.blackColor colorWithAlphaComponent:increaseContrast ? 0.16 : 0.055].CGColor;
     backdrop.layer.shadowColor = NSColor.blackColor.CGColor;
-    backdrop.layer.shadowOpacity = 0.08;
-    backdrop.layer.shadowRadius = 10;
-    backdrop.layer.shadowOffset = CGSizeMake(0, -3);
+    backdrop.layer.shadowOpacity = 0.065;
+    backdrop.layer.shadowRadius = 12;
+    backdrop.layer.shadowOffset = CGSizeMake(0, -4);
     backdrop.sheenLayer.colors = @[
-        (id)[NSColor.whiteColor colorWithAlphaComponent:0.08].CGColor,
-        (id)[NSColor.whiteColor colorWithAlphaComponent:0.01].CGColor,
-        (id)[CQTheme.accent colorWithAlphaComponent:0.012].CGColor
+        (id)[NSColor.whiteColor colorWithAlphaComponent:0.24].CGColor,
+        (id)[NSColor.whiteColor colorWithAlphaComponent:0.02].CGColor,
+        (id)[CQTheme.accent colorWithAlphaComponent:0.008].CGColor
     ];
     [container addSubview:backdrop];
     [NSLayoutConstraint activateConstraints:@[
@@ -326,11 +328,13 @@ NSVisualEffectView *CQGlassView(NSVisualEffectMaterial material, CGFloat cornerR
     view.wantsLayer = YES;
     view.preferredCornerRadius = cornerRadius;
     BOOL reduceTransparency = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceTransparency;
-    view.layer.backgroundColor = [CQTheme.mantle colorWithAlphaComponent:reduceTransparency ? 0.98 : 0.90].CGColor;
+    BOOL increaseContrast = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldIncreaseContrast;
+    CGFloat fillAlpha = reduceTransparency ? 0.995 : (increaseContrast ? 0.985 : 0.96);
+    view.layer.backgroundColor = [CQTheme.mantle colorWithAlphaComponent:fillAlpha].CGColor;
     view.layer.cornerRadius = cornerRadius;
     view.layer.cornerCurve = kCACornerCurveContinuous;
     view.layer.borderWidth = 0.7;
-    view.layer.borderColor = [NSColor.whiteColor colorWithAlphaComponent:reduceTransparency ? 0.82 : 0.38].CGColor;
+    view.layer.borderColor = [NSColor.blackColor colorWithAlphaComponent:increaseContrast ? 0.16 : 0.055].CGColor;
     return view;
 }
 
@@ -349,15 +353,16 @@ NSView *CQWindowGlassView(void) {
     backdrop.preferredCornerRadius = 18;
     backdrop.configuresHostingWindow = YES;
     BOOL reduceTransparency = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceTransparency;
+    BOOL increaseContrast = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldIncreaseContrast;
     backdrop.alphaValue = 1.0;
-    backdrop.layer.backgroundColor = reduceTransparency
-        ? [CQTheme.base colorWithAlphaComponent:0.96].CGColor
-        : [CQTheme.base colorWithAlphaComponent:0.82].CGColor;
-    backdrop.layer.borderWidth = 0;
+    CGFloat fillAlpha = reduceTransparency ? 0.995 : (increaseContrast ? 0.98 : 0.94);
+    backdrop.layer.backgroundColor = [CQTheme.base colorWithAlphaComponent:fillAlpha].CGColor;
+    backdrop.layer.borderWidth = 0.75;
+    backdrop.layer.borderColor = [NSColor.blackColor colorWithAlphaComponent:increaseContrast ? 0.20 : 0.10].CGColor;
     backdrop.sheenLayer.colors = @[
-        (id)[NSColor.whiteColor colorWithAlphaComponent:reduceTransparency ? 0.10 : 0.06].CGColor,
-        (id)[NSColor.whiteColor colorWithAlphaComponent:0.01].CGColor,
-        (id)[CQTheme.accent colorWithAlphaComponent:reduceTransparency ? 0.0 : 0.02].CGColor
+        (id)[NSColor.whiteColor colorWithAlphaComponent:reduceTransparency ? 0.04 : 0.12].CGColor,
+        (id)[NSColor.whiteColor colorWithAlphaComponent:0.015].CGColor,
+        (id)[CQTheme.accent colorWithAlphaComponent:reduceTransparency ? 0.0 : 0.006].CGColor
     ];
     [container addSubview:backdrop];
     [NSLayoutConstraint activateConstraints:@[
