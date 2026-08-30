@@ -25,7 +25,7 @@
 
         _glowLayer = [CAShapeLayer layer];
         _glowLayer.shadowOffset = CGSizeZero;
-        _glowLayer.shadowRadius = 4.0;
+        _glowLayer.shadowRadius = 2.25;
         [self.layer addSublayer:_glowLayer];
 
         _revealLayer = [CALayer layer];
@@ -89,7 +89,7 @@
 }
 - (void)setProgress:(double)progress color:(NSColor *)color animated:(BOOL)animated {
     progress = MAX(0, MIN(1, progress));
-    NSColor *gradientStart = [color blendedColorWithFraction:0.34 ofColor:NSColor.whiteColor];
+    NSColor *gradientStart = [color blendedColorWithFraction:0.42 ofColor:NSColor.whiteColor];
     NSColor *gradientEnd = [color blendedColorWithFraction:0.12 ofColor:NSColor.blackColor];
     _fillLayer.colors = @[(id)gradientStart.CGColor, (id)color.CGColor, (id)gradientEnd.CGColor];
     _fillLayer.locations = @[@0, @0.58, @1];
@@ -97,9 +97,9 @@
     BOOL increaseContrast = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldIncreaseContrast;
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    _glowLayer.fillColor = [color colorWithAlphaComponent:increaseContrast ? 0.10 : 0.18].CGColor;
+    _glowLayer.fillColor = [color colorWithAlphaComponent:increaseContrast ? 0.10 : 0.24].CGColor;
     _glowLayer.shadowColor = color.CGColor;
-    _glowLayer.shadowOpacity = progress > 0 ? (increaseContrast ? 0.20 : 0.42) : 0;
+    _glowLayer.shadowOpacity = progress > 0 ? (increaseContrast ? 0.20 : 0.56) : 0;
     [CATransaction commit];
     self.progress = progress;
     [self setNeedsLayout:YES];
@@ -252,6 +252,7 @@ static NSStackView *CQHorizontal(void) {
 @property(nonatomic, strong) NSView *deepSeekPanel;
 @property(nonatomic, strong) NSStackView *deepSeekSettings;
 @property(nonatomic, strong) NSPopUpButton *modelPopup;
+@property(nonatomic, strong) NSTextField *providerMetricTitleLabel;
 @property(nonatomic, strong) NSTextField *deepSeekBalanceLabel;
 @property(nonatomic, strong) NSTextField *quotaTitleLabel;
 @property(nonatomic, strong) NSView *quotaPanel;
@@ -342,7 +343,7 @@ static NSStackView *CQHorizontal(void) {
     [subheader addArrangedSubview:self.planLabel];
     [content addArrangedSubview:subheader];
 
-    self.providerControl = [NSSegmentedControl segmentedControlWithLabels:@[@"Codex 订阅", @"DeepSeek"]
+    self.providerControl = [NSSegmentedControl segmentedControlWithLabels:@[@"Codex 订阅", @"DeepSeek", @"GLM"]
                                                              trackingMode:NSSegmentSwitchTrackingSelectOne
                                                                    target:self
                                                                    action:@selector(providerChanged:)];
@@ -376,7 +377,8 @@ static NSStackView *CQHorizontal(void) {
     [self.deepSeekSettings addArrangedSubview:modelRow];
 
     NSStackView *balanceRow = CQHorizontal();
-    [balanceRow addArrangedSubview:CQLabel(@"剩余金额", [NSFont systemFontOfSize:12 weight:NSFontWeightMedium], CQTheme.subtext)];
+    self.providerMetricTitleLabel = CQLabel(@"剩余金额", [NSFont systemFontOfSize:12 weight:NSFontWeightMedium], CQTheme.subtext);
+    [balanceRow addArrangedSubview:self.providerMetricTitleLabel];
     NSView *balanceSpacer = [NSView new];
     [balanceSpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
     [balanceRow addArrangedSubview:balanceSpacer];
@@ -633,6 +635,8 @@ static NSStackView *CQHorizontal(void) {
              signedOut:(BOOL)signedOut
          launchAtLogin:(BOOL)launchAtLogin {
     BOOL deepSeek = providerMode == CQProviderModeDeepSeek;
+    BOOL glm = providerMode == CQProviderModeGLM;
+    BOOL externalProvider = providerMode != CQProviderModeCodex;
     self.statusLabel.stringValue = status;
     NSColor *statusColor = [status isEqualToString:@"已连接"] ? CQTheme.accent
         : ([status isEqualToString:@"需要登录"]
@@ -643,34 +647,45 @@ static NSStackView *CQHorizontal(void) {
     self.statusPill.layer.backgroundColor = [statusColor colorWithAlphaComponent:0.10].CGColor;
     self.statusPill.layer.borderColor = [statusColor colorWithAlphaComponent:0.28].CGColor;
     self.detailLabel.stringValue = detail;
-    self.planLabel.stringValue = deepSeek ? @"DEEPSEEK" : (snapshot.planType.uppercaseString ?: @"");
-    self.providerControl.selectedSegment = deepSeek ? 1 : 0;
-    self.deepSeekPanel.hidden = !deepSeek;
-    [self.modelPopup selectItemWithTitle:model ?: CQDeepSeekFlashModel];
-    self.deepSeekBalanceLabel.stringValue = deepSeekBalance ? deepSeekBalance.displayValue : @"等待余额数据…";
-    self.deepSeekBalanceLabel.textColor = deepSeekBalance.available ? CQTheme.accent : CQTheme.yellow;
+    self.planLabel.stringValue = deepSeek ? @"DEEPSEEK" : (glm ? @"ZHIPU GLM" : (snapshot.planType.uppercaseString ?: @""));
+    self.providerControl.selectedSegment = deepSeek ? 1 : (glm ? 2 : 0);
+    self.deepSeekPanel.hidden = !externalProvider;
+    NSArray<NSString *> *modelTitles = glm
+        ? @[CQGLMFlashModel, CQGLMModel]
+        : @[CQDeepSeekFlashModel, CQDeepSeekProModel];
+    NSArray<NSString *> *currentTitles = [self.modelPopup.itemArray valueForKey:@"title"];
+    if (![currentTitles isEqualToArray:modelTitles]) {
+        [self.modelPopup removeAllItems];
+        [self.modelPopup addItemsWithTitles:modelTitles];
+    }
+    [self.modelPopup selectItemWithTitle:model ?: modelTitles.firstObject];
+    self.providerMetricTitleLabel.stringValue = glm ? @"接入协议" : @"剩余金额";
+    self.deepSeekBalanceLabel.stringValue = glm
+        ? @"Codex Responses"
+        : (deepSeekBalance ? deepSeekBalance.displayValue : @"等待余额数据…");
+    self.deepSeekBalanceLabel.textColor = glm || deepSeekBalance.available ? CQTheme.accent : CQTheme.yellow;
 
-    self.quotaPanel.hidden = deepSeek;
+    self.quotaPanel.hidden = externalProvider;
     self.refreshButton.enabled = !refreshing;
     self.refreshButton.title = refreshing ? @"刷新中…" : @"刷新";
-    self.loginButton.hidden = deepSeek || !signedOut;
+    self.refreshButton.hidden = glm;
+    self.loginButton.hidden = externalProvider || !signedOut;
     self.launchCheckbox.state = launchAtLogin ? NSControlStateValueOn : NSControlStateValueOff;
 
-    if (!deepSeek) [self reconcileQuotaWindows:snapshot.windows ?: @[] hasSnapshot:snapshot != nil];
+    if (!externalProvider) [self reconcileQuotaWindows:snapshot.windows ?: @[] hasSnapshot:snapshot != nil];
 
     self.resetValueLabel.stringValue = snapshot.resetCreditsAvailable
         ? [NSString stringWithFormat:@"%@ 次", snapshot.resetCreditsAvailable] : @"不可用";
-    self.workspaceRow.hidden = deepSeek || !snapshot.hasWorkspaceCredits;
-    if (!deepSeek && snapshot.hasWorkspaceCredits) {
+    self.workspaceRow.hidden = externalProvider || !snapshot.hasWorkspaceCredits;
+    if (!externalProvider && snapshot.hasWorkspaceCredits) {
         self.workspaceValueLabel.stringValue = snapshot.workspaceUnlimited
             ? @"无限" : (snapshot.workspaceBalance ?: @"不可用");
     }
     self.errorLabel.hidden = error.length == 0;
     self.errorLabel.stringValue = error ?: @"";
     NSDate *updatedAt = deepSeek ? deepSeekBalance.updatedAt : snapshot.updatedAt;
-    self.updatedLabel.stringValue = updatedAt
-        ? [NSString stringWithFormat:@"最后更新：%@", CQAbsoluteDateString(updatedAt)]
-        : @"尚未更新";
+    self.updatedLabel.stringValue = glm ? @"配置已就绪"
+        : (updatedAt ? [NSString stringWithFormat:@"最后更新：%@", CQAbsoluteDateString(updatedAt)] : @"尚未更新");
 
     [self.view layoutSubtreeIfNeeded];
     CGFloat contentHeight = self.contentStack.fittingSize.height;
@@ -683,7 +698,9 @@ static NSStackView *CQHorizontal(void) {
 - (void)chooseCodex:(id)sender { if (self.chooseCodexHandler) self.chooseCodexHandler(); }
 - (void)providerChanged:(NSSegmentedControl *)sender {
     if (self.providerChangeHandler) {
-        self.providerChangeHandler(sender.selectedSegment == 1 ? CQProviderModeDeepSeek : CQProviderModeCodex);
+        CQProviderMode mode = sender.selectedSegment == 1 ? CQProviderModeDeepSeek
+            : (sender.selectedSegment == 2 ? CQProviderModeGLM : CQProviderModeCodex);
+        self.providerChangeHandler(mode);
     }
 }
 - (void)modelChanged:(NSPopUpButton *)sender {

@@ -35,8 +35,8 @@
 Codex Quota 把分散在命令行、配置文件和扩展目录里的高频操作，收进一个不占 Dock 位置的 360pt 菜单栏面板：
 
 - **看额度**：同时展示 Codex 的全部额度窗口、重置时间、剩余重置次数和可选的工作区余额。
-- **切来源**：在 Codex 订阅、`deepseek-v4-flash` 与 `deepseek-v4-pro` 之间切换，并安全备份、恢复配置。
-- **保留历史入口**：由 Codex Quota 重启 Codex 后，可在本机列表中同时看到 `openai`、`deepseek` 和旧版 `custom` provider 的对话入口。
+- **切来源**：在 Codex 订阅、DeepSeek 与智谱 GLM 之间切换；GLM 支持 `glm-5.3-flash` 和 `glm-5.3`。
+- **保留历史入口**：由 Codex Quota 重启 Codex 后，可在本机列表中同时看到 `openai`、`deepseek`、`zhipu` 和旧版 `custom` provider 的对话入口。
 - **管扩展**：识别第三方与自建 Skill / 插件，检查版本、执行更新、定位目录，并完整卸载 Skill。
 
 ## 开始使用
@@ -90,6 +90,17 @@ DeepSeek 模式需要 Codex `0.144.0` 或更新版本。第一次切换时：
 切换前，应用会备份 `~/.codex/config.toml` 和已有的 `models.json`；切回 Codex 订阅时恢复原配置。
 API Key 按 Codex 接入要求写入配置，并额外保存在 macOS 钥匙串中。
 
+### 智谱 GLM
+
+GLM 模式通过智谱为 Codex 提供的 OpenAI Responses 端点接入。第一次切换时：
+
+1. 选择面板顶部的 **GLM**；
+2. 输入或使用 `⌘V` 粘贴智谱 API Key；
+3. 选择 `glm-5.3-flash` 或 `glm-5.3`；
+4. 配置成功后选择 **立即重启**。
+
+GLM API Key 使用独立的 macOS 钥匙串项保存。模型配置采用 `https://open.bigmodel.cn/api/v1`、Responses 协议和 1M 上下文；切回 Codex 订阅时同样恢复切换前的原始配置。
+
 > [!IMPORTANT]
 > 本机历史兼容桥只注入由 Codex Quota 发起的新 Codex 进程。若完全退出后从 Dock 手动打开 Codex，可能绕过兼容桥；
 > 重新切换一次来源并选择“立即重启”即可恢复统一入口，不会删除对话。
@@ -133,7 +144,7 @@ API Key 按 Codex 接入要求写入配置，并额外保存在 macOS 钥匙串�
 ## 数据与隐私
 
 - Codex 模式只与本机 App Server 通信，不读取 `~/.codex/auth.json`，不保存登录 URL 或认证令牌。
-- DeepSeek 余额只请求官方 `/user/balance`；API Key 不写日志、不在界面回显。
+- DeepSeek 余额只请求官方 `/user/balance`；DeepSeek 与 GLM API Key 均不写日志、不在界面回显。
 - 历史兼容桥不读取对话正文，不修改 SQLite 会话库或 JSONL 内容。
 - 扩展检查只按安装来源访问 GitHub、Well-known Skill 站点、npm、飞书 CLI 或 Codex 插件市场。
 - 配置切换、扩展更新与 Skill 卸载都需要用户主动操作。
@@ -150,7 +161,7 @@ API Key 按 Codex 接入要求写入配置，并额外保存在 macOS 钥匙串�
 ## 常见问题
 
 <details>
-<summary><strong>切换到 DeepSeek 后为什么只看到 DeepSeek 对话？</strong></summary>
+<summary><strong>切换到 DeepSeek 或 GLM 后为什么只看到当前来源的对话？</strong></summary>
 
 确认切换完成时选择了“立即重启”。兼容桥只会注入由 Codex Quota 发起的新 Codex 进程。
 

@@ -12,6 +12,7 @@
 
 static NSString * const CQSavedCodexPathKey = @"CodexExecutablePath";
 static CGFloat const CQPopoverWidth = 360.0;
+static CGFloat const CQPanelAnchorGap = 6.0;
 
 static os_log_t CQLogger(void) {
     static os_log_t logger;
@@ -36,9 +37,20 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     CQPopoverPageExtensions
 };
 
-@interface CQAppDelegate : NSObject <NSApplicationDelegate, NSPopoverDelegate>
+@interface CQGlassPanel : NSPanel
+@end
+
+@implementation CQGlassPanel
+
+- (BOOL)canBecomeKeyWindow { return YES; }
+- (BOOL)canBecomeMainWindow { return NO; }
+- (void)cancelOperation:(id)sender { [self orderOut:sender]; }
+
+@end
+
+@interface CQAppDelegate : NSObject <NSApplicationDelegate, NSWindowDelegate>
 @property(nonatomic, strong) NSStatusItem *statusItem;
-@property(nonatomic, strong) NSPopover *popover;
+@property(nonatomic, strong) CQGlassPanel *panel;
 @property(nonatomic, strong) CQPopoverController *popoverController;
 @property(nonatomic, strong) CQExtensionManager *extensionManager;
 @property(nonatomic, strong) CQExtensionManagerController *extensionController;
@@ -49,6 +61,7 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
 @property(nonatomic, strong, nullable) CQDeepSeekBalance *deepSeekBalance;
 @property(nonatomic) CQProviderMode providerMode;
 @property(nonatomic, copy) NSString *deepSeekModel;
+@property(nonatomic, copy) NSString *glmModel;
 @property(nonatomic, strong, nullable) NSURL *codexURL;
 @property(nonatomic, strong, nullable) NSTimer *pollTimer;
 @property(nonatomic) nw_path_monitor_t pathMonitor;
@@ -65,6 +78,9 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
 @property(nonatomic, copy) NSString *detail;
 @property(nonatomic, copy, nullable) NSString *errorMessage;
 @property(nonatomic, strong, nullable) NSWindow *previewWindow;
+- (void)configurePanel;
+- (void)positionPanel;
+- (void)setPanelContentViewController:(NSViewController *)controller height:(CGFloat)height;
 @end
 
 @implementation CQAppDelegate
@@ -73,6 +89,7 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     NSArray<NSString *> *arguments = NSProcessInfo.processInfo.arguments;
     if ([arguments containsObject:@"--preview"]
         || [arguments containsObject:@"--preview-deepseek"]
+        || [arguments containsObject:@"--preview-glm"]
         || [arguments containsObject:@"--preview-api-key"]
         || [arguments containsObject:@"--preview-extensions"]) {
         [self configureApplicationMenu];
@@ -85,31 +102,41 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     self.deepSeekClient = [CQDeepSeekClient new];
     self.providerMode = self.configManager.currentMode;
     self.deepSeekModel = self.configManager.currentDeepSeekModel;
+    self.glmModel = self.configManager.currentGLMModel;
     BOOL migratedHistoryConfiguration = NO;
-    if (self.providerMode == CQProviderModeDeepSeek
-        && self.configManager.managedConfigurationNeedsHistoryMigration) {
-        NSString *apiKey = self.configManager.savedDeepSeekAPIKey;
+    if (self.providerMode != CQProviderModeCodex && self.configManager.managedConfigurationNeedsHistoryMigration) {
+        NSString *apiKey = self.providerMode == CQProviderModeDeepSeek
+            ? self.configManager.savedDeepSeekAPIKey : self.configManager.savedGLMAPIKey;
         NSError *migrationError = nil;
-        if (apiKey.length > 0
-            && [self.configManager switchToDeepSeekModel:self.deepSeekModel apiKey:apiKey error:&migrationError]) {
+        BOOL migrated = NO;
+        if (apiKey.length > 0) {
+            migrated = self.providerMode == CQProviderModeDeepSeek
+                ? [self.configManager switchToDeepSeekModel:self.deepSeekModel apiKey:apiKey error:&migrationError]
+                : [self.configManager switchToGLMModel:self.glmModel apiKey:apiKey error:&migrationError];
+        }
+        if (migrated) {
             migratedHistoryConfiguration = YES;
         } else {
-            self.errorMessage = migrationError.localizedDescription ?: @"无法升级 DeepSeek 配置以保留对话历史";
+            NSString *provider = self.providerMode == CQProviderModeDeepSeek ? @"DeepSeek" : @"GLM";
+            self.errorMessage = migrationError.localizedDescription
+                ?: [NSString stringWithFormat:@"无法升级 %@ 配置以保留对话历史", provider];
         }
     }
     self.networkAvailable = YES;
-    self.connectionState = CQConnectionStateLocating;
-    self.detail = self.providerMode == CQProviderModeDeepSeek
-        ? @"正在读取 DeepSeek 余额…" : @"正在查找 Codex…";
+    self.connectionState = self.providerMode == CQProviderModeGLM
+        ? CQConnectionStateConnected : CQConnectionStateLocating;
+    self.detail = self.providerMode == CQProviderModeDeepSeek ? @"正在读取 DeepSeek 余额…"
+        : (self.providerMode == CQProviderModeGLM ? @"GLM 配置已就绪" : @"正在查找 Codex…");
     [self configureMenuBar];
-    [self configurePopover];
+    [self configurePanel];
     [self configureSystemObservers];
     [self render];
     if (self.providerMode == CQProviderModeDeepSeek) [self refreshDeepSeekBalance];
-    else [self locateAndConnect];
+    else if (self.providerMode == CQProviderModeCodex) [self locateAndConnect];
     if (migratedHistoryConfiguration) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            [self offerToRestartCodexAfterChange:@"DeepSeek 配置已升级，Codex 登录身份将保持不变"];
+            NSString *provider = self.providerMode == CQProviderModeDeepSeek ? @"DeepSeek" : @"GLM";
+            [self offerToRestartCodexAfterChange:[NSString stringWithFormat:@"%@ 配置已升级，Codex 登录身份将保持不变", provider]];
         });
     }
 }
@@ -117,14 +144,15 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
 - (void)showPreviewWindow {
     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
     self.popoverController = [CQPopoverController new];
-    self.previewWindow = [[NSWindow alloc]
+    self.previewWindow = [[CQGlassPanel alloc]
         initWithContentRect:NSMakeRect(0, 0, 360, 420)
-                  styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable
+                  styleMask:NSWindowStyleMaskBorderless
                     backing:NSBackingStoreBuffered
                       defer:NO];
     self.previewWindow.title = @"Codex Quota · 界面预览";
     self.previewWindow.opaque = NO;
     self.previewWindow.backgroundColor = NSColor.clearColor;
+    self.previewWindow.hasShadow = YES;
     self.previewWindow.level = NSFloatingWindowLevel;
     self.previewWindow.collectionBehavior = NSWindowCollectionBehaviorCanJoinAllSpaces
         | NSWindowCollectionBehaviorFullScreenAuxiliary;
@@ -176,6 +204,7 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     snapshot.workspaceBalance = @"128.50";
     snapshot.updatedAt = NSDate.date;
     BOOL deepSeekPreview = [NSProcessInfo.processInfo.arguments containsObject:@"--preview-deepseek"];
+    BOOL glmPreview = [NSProcessInfo.processInfo.arguments containsObject:@"--preview-glm"];
     CQDeepSeekBalance *deepSeekBalance = nil;
     if (deepSeekPreview) {
         deepSeekBalance = [CQDeepSeekBalance balanceFromResponse:@{
@@ -188,19 +217,21 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
             }]
         }];
     }
+    CQProviderMode previewMode = glmPreview ? CQProviderModeGLM
+        : (deepSeekPreview ? CQProviderModeDeepSeek : CQProviderModeCodex);
     [self.popoverController renderSnapshot:snapshot
                            deepSeekBalance:deepSeekBalance
-                              providerMode:deepSeekPreview ? CQProviderModeDeepSeek : CQProviderModeCodex
-                                     model:CQDeepSeekFlashModel
+                              providerMode:previewMode
+                                     model:glmPreview ? CQGLMFlashModel : CQDeepSeekFlashModel
                                     status:@"已连接"
-                                    detail:deepSeekPreview ? @"余额已同步" : @"额度已同步"
+                                    detail:deepSeekPreview ? @"余额已同步" : (glmPreview ? @"GLM 配置已就绪" : @"额度已同步")
                                      error:nil
                                 refreshing:NO
                                  signedOut:NO
                              launchAtLogin:NO];
     if ([NSProcessInfo.processInfo.arguments containsObject:@"--preview-api-key"]) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            NSString *value = [self promptForDeepSeekAPIKeyWithTitle:@"API Key 粘贴验证"];
+            NSString *value = [self promptForAPIKeyWithTitle:@"API Key 粘贴验证" providerMode:CQProviderModeDeepSeek];
             if (value) {
                 self.previewWindow.title = [NSString stringWithFormat:@"Codex Quota · 粘贴验证 %lu",
                     (unsigned long)value.length];
@@ -262,7 +293,7 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     button.accessibilityLabel = @"Codex 剩余额度";
 }
 
-- (void)configurePopover {
+- (void)configurePanel {
     self.popoverController = [CQPopoverController new];
     __weak typeof(self) weakSelf = self;
     self.popoverController.refreshHandler = ^{ [weakSelf refreshNow]; };
@@ -272,19 +303,35 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
         [weakSelf switchToProviderMode:mode];
     };
     self.popoverController.modelChangeHandler = ^(NSString *model) {
-        [weakSelf switchDeepSeekModel:model];
+        [weakSelf switchExternalModel:model];
     };
-    self.popoverController.changeAPIKeyHandler = ^{ [weakSelf promptToChangeDeepSeekAPIKey]; };
+    self.popoverController.changeAPIKeyHandler = ^{ [weakSelf promptToChangeExternalAPIKey]; };
     self.popoverController.extensionManagerHandler = ^{ [weakSelf showExtensionManager]; };
     self.popoverController.launchAtLoginHandler = ^(BOOL enabled) { [weakSelf setLaunchAtLogin:enabled]; };
     self.popoverController.quitHandler = ^{ [NSApp terminate:nil]; };
 
-    self.popover = [NSPopover new];
-    self.popover.behavior = NSPopoverBehaviorTransient;
-    self.popover.animates = !NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceMotion;
-    self.popover.contentViewController = self.popoverController;
-    self.popover.contentSize = NSMakeSize(CQPopoverWidth, self.popoverController.preferredContentSize.height);
-    self.popover.delegate = self;
+    self.panel = [[CQGlassPanel alloc]
+        initWithContentRect:NSMakeRect(0, 0, CQPopoverWidth, self.popoverController.preferredContentSize.height)
+                  styleMask:NSWindowStyleMaskBorderless | NSWindowStyleMaskNonactivatingPanel
+                    backing:NSBackingStoreBuffered
+                      defer:NO];
+    self.panel.delegate = self;
+    self.panel.opaque = NO;
+    self.panel.backgroundColor = NSColor.clearColor;
+    self.panel.hasShadow = YES;
+    self.panel.level = NSPopUpMenuWindowLevel;
+    self.panel.collectionBehavior = NSWindowCollectionBehaviorCanJoinAllSpaces
+        | NSWindowCollectionBehaviorFullScreenAuxiliary
+        | NSWindowCollectionBehaviorTransient
+        | NSWindowCollectionBehaviorIgnoresCycle;
+    self.panel.animationBehavior = NSWindowAnimationBehaviorNone;
+    self.panel.releasedWhenClosed = NO;
+    self.panel.hidesOnDeactivate = NO;
+    self.panel.movable = NO;
+    self.panel.movableByWindowBackground = NO;
+    self.panel.becomesKeyOnlyIfNeeded = NO;
+    self.panel.accessibilityLabel = @"Codex Quota";
+    self.panel.contentViewController = self.popoverController;
     self.currentPopoverPage = CQPopoverPageQuota;
 
     NSURL *extensionCodexURL = self.codexURL ?: [self locateCodex];
@@ -292,6 +339,34 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     self.extensionController = [[CQExtensionManagerController alloc] initWithManager:self.extensionManager];
     self.extensionController.backHandler = ^{ [weakSelf showQuotaPanel]; };
     [self.extensionManager startPeriodicChecks];
+}
+
+- (void)setPanelContentViewController:(NSViewController *)controller height:(CGFloat)height {
+    if (self.panel.contentViewController != controller) self.panel.contentViewController = controller;
+    [self.panel setContentSize:NSMakeSize(CQPopoverWidth, height)];
+    [self positionPanel];
+}
+
+- (void)positionPanel {
+    NSStatusBarButton *button = self.statusItem.button;
+    NSWindow *statusWindow = button.window;
+    if (!button || !statusWindow) return;
+    NSRect anchorRect = [button convertRect:button.bounds toView:nil];
+    anchorRect = [statusWindow convertRectToScreen:anchorRect];
+    NSScreen *screen = statusWindow.screen ?: NSScreen.mainScreen;
+    if (!screen) return;
+    NSRect availableFrame = screen.visibleFrame;
+    NSSize panelSize = self.panel.frame.size;
+    CGFloat edgeInset = 8.0;
+    CGFloat x = NSMidX(anchorRect) - panelSize.width / 2.0;
+    x = MAX(NSMinX(availableFrame) + edgeInset,
+            MIN(x, NSMaxX(availableFrame) - panelSize.width - edgeInset));
+    CGFloat y = NSMinY(anchorRect) - panelSize.height - CQPanelAnchorGap;
+    if (y < NSMinY(availableFrame) + edgeInset) {
+        y = MIN(NSMaxY(anchorRect) + CQPanelAnchorGap,
+                NSMaxY(availableFrame) - panelSize.height - edgeInset);
+    }
+    [self.panel setFrameOrigin:NSMakePoint(round(x), round(y))];
 }
 
 - (void)configureSystemObservers {
@@ -329,14 +404,14 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
 }
 
 - (void)togglePopover:(id)sender {
-    if (self.popover.shown) {
-        [self.popover performClose:nil];
+    if (self.panel.visible) {
+        [self.panel orderOut:nil];
         return;
     }
     if (self.currentPopoverPage == CQPopoverPageExtensions) [self showExtensionManager];
     else [self showQuotaPanel];
-    NSStatusBarButton *button = self.statusItem.button;
-    [self.popover showRelativeToRect:button.bounds ofView:button preferredEdge:NSRectEdgeMinY];
+    [self positionPanel];
+    [self.panel makeKeyAndOrderFront:nil];
     [self refreshNow];
 }
 
@@ -344,9 +419,7 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     self.currentPopoverPage = CQPopoverPageExtensions;
     (void)self.extensionController.view;
     CGFloat height = self.extensionController.preferredContentSize.height;
-    self.popover.contentSize = NSMakeSize(CQPopoverWidth, height);
-    self.popover.contentViewController = self.extensionController;
-    self.popover.contentSize = NSMakeSize(CQPopoverWidth, height);
+    [self setPanelContentViewController:self.extensionController height:height];
     [self.extensionManager setCodexURL:self.codexURL ?: [self locateCodex]];
     if (self.extensionManager.items.count == 0) [self.extensionManager loadInstalledExtensions];
 }
@@ -355,16 +428,14 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     self.currentPopoverPage = CQPopoverPageQuota;
     (void)self.popoverController.view;
     CGFloat height = self.popoverController.preferredContentSize.height;
-    self.popover.contentSize = NSMakeSize(CQPopoverWidth, height);
-    if (self.popover.contentViewController != self.popoverController) {
-        self.popover.contentViewController = self.popoverController;
-    }
-    self.popover.contentSize = NSMakeSize(CQPopoverWidth, height);
+    [self setPanelContentViewController:self.popoverController height:height];
 }
 
-- (void)popoverDidShow:(NSNotification *)notification {
-    NSWindow *window = self.popover.contentViewController.view.window;
-    [window makeKeyWindow];
+- (void)windowDidResignKey:(NSNotification *)notification {
+    if (notification.object != self.panel) return;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (self.panel.visible && !self.panel.keyWindow) [self.panel orderOut:nil];
+    });
 }
 
 - (void)systemDidWake:(NSNotification *)notification {
@@ -373,6 +444,7 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
 
 - (void)poll:(NSTimer *)timer {
     if (self.providerMode == CQProviderModeDeepSeek && self.networkAvailable) [self refreshDeepSeekBalance];
+    else if (self.providerMode == CQProviderModeGLM) [self render];
     else if (self.client.running && self.networkAvailable) [self refreshNow];
     else if (!self.client.running && self.networkAvailable) [self scheduleReconnectImmediately];
     else [self render];
@@ -478,6 +550,12 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
         [self refreshDeepSeekBalance];
         return;
     }
+    if (self.providerMode == CQProviderModeGLM) {
+        self.connectionState = self.networkAvailable ? CQConnectionStateConnected : CQConnectionStateOffline;
+        self.detail = self.networkAvailable ? @"GLM 配置已就绪" : @"网络不可用";
+        [self render];
+        return;
+    }
     if (!self.networkAvailable) {
         self.connectionState = CQConnectionStateOffline;
         self.detail = @"网络不可用，将在恢复后刷新";
@@ -505,14 +583,18 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     }];
 }
 
-- (NSString *)promptForDeepSeekAPIKeyWithTitle:(NSString *)title {
+- (NSString *)promptForAPIKeyWithTitle:(NSString *)title providerMode:(CQProviderMode)providerMode {
     NSAlert *alert = [NSAlert new];
     alert.messageText = title;
-    alert.informativeText = @"API Key 以 sk- 开头。它会写入 Codex 官方配置，并额外保存到 macOS 钥匙串，供下次切换使用。";
+    BOOL deepSeek = providerMode == CQProviderModeDeepSeek;
+    NSString *provider = deepSeek ? @"DeepSeek" : @"智谱";
+    alert.informativeText = deepSeek
+        ? @"API Key 以 sk- 开头。它会写入 Codex 配置，并额外保存到 macOS 钥匙串，供下次切换使用。"
+        : @"请输入智谱 API Key。它会通过 Codex Responses 协议调用 GLM，并额外保存到 macOS 钥匙串。";
     [alert addButtonWithTitle:@"保存并切换"];
     [alert addButtonWithTitle:@"取消"];
     NSSecureTextField *field = [[NSSecureTextField alloc] initWithFrame:NSMakeRect(0, 0, 330, 26)];
-    field.placeholderString = @"sk-…";
+    field.placeholderString = deepSeek ? @"sk-…" : [NSString stringWithFormat:@"%@ API Key", provider];
     field.font = [NSFont monospacedSystemFontOfSize:12 weight:NSFontWeightRegular];
     alert.accessoryView = field;
     alert.window.initialFirstResponder = field;
@@ -607,7 +689,7 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     NSAlert *alert = [NSAlert new];
     alert.messageText = @"配置已切换";
     alert.informativeText = [NSString stringWithFormat:
-        @"%@。是否立即由 Codex Quota 重启 Codex？这样既会应用配置，也会同时显示 Codex 与 DeepSeek 的本机对话。",
+        @"%@。是否立即由 Codex Quota 重启 Codex？这样既会应用配置，也会同时显示 Codex、DeepSeek 与 GLM 的本机对话。",
         changeDescription];
     [alert addButtonWithTitle:@"立即重启"];
     [alert addButtonWithTitle:@"稍后"];
@@ -622,7 +704,7 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     }
     if (mode == CQProviderModeDeepSeek) {
         NSString *apiKey = self.configManager.savedDeepSeekAPIKey;
-        if (apiKey.length == 0) apiKey = [self promptForDeepSeekAPIKeyWithTitle:@"连接 DeepSeek"];
+        if (apiKey.length == 0) apiKey = [self promptForAPIKeyWithTitle:@"连接 DeepSeek" providerMode:CQProviderModeDeepSeek];
         if (apiKey.length == 0) {
             [self render];
             return;
@@ -652,6 +734,38 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
         [self offerToRestartCodexAfterChange:@"已切换到 DeepSeek V4 Flash"];
         return;
     }
+    if (mode == CQProviderModeGLM) {
+        NSString *apiKey = self.configManager.savedGLMAPIKey;
+        if (apiKey.length == 0) apiKey = [self promptForAPIKeyWithTitle:@"连接智谱 GLM" providerMode:CQProviderModeGLM];
+        if (apiKey.length == 0) {
+            [self render];
+            return;
+        }
+        NSError *error = nil;
+        if (![self.configManager switchToGLMModel:CQGLMFlashModel apiKey:apiKey error:&error]) {
+            self.providerMode = self.configManager.currentMode;
+            self.errorMessage = error.localizedDescription;
+            [self render];
+            return;
+        }
+        self.providerMode = CQProviderModeGLM;
+        self.glmModel = CQGLMFlashModel;
+        self.connectionGeneration += 1;
+        [self.client stop];
+        self.client = nil;
+        [self.deepSeekClient cancel];
+        self.snapshot = nil;
+        self.deepSeekBalance = nil;
+        self.refreshing = NO;
+        self.authenticating = NO;
+        self.connectionState = self.networkAvailable ? CQConnectionStateConnected : CQConnectionStateOffline;
+        self.detail = self.networkAvailable ? @"已切换，新开的 Codex 会话将使用 GLM" : @"网络不可用";
+        self.errorMessage = nil;
+        self.reconnectAttempt = 0;
+        [self render];
+        [self offerToRestartCodexAfterChange:@"已切换到 GLM-5.3-Flash"];
+        return;
+    }
 
     NSError *error = nil;
     if (![self.configManager switchToCodexWithError:&error]) {
@@ -674,32 +788,48 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     [self offerToRestartCodexAfterChange:@"已恢复 Codex 默认订阅"];
 }
 
-- (void)switchDeepSeekModel:(NSString *)model {
-    if (self.providerMode != CQProviderModeDeepSeek || [model isEqualToString:self.deepSeekModel]) return;
-    NSString *apiKey = self.configManager.savedDeepSeekAPIKey;
+- (void)switchExternalModel:(NSString *)model {
+    if (self.providerMode == CQProviderModeCodex) return;
+    NSString *currentModel = self.providerMode == CQProviderModeDeepSeek ? self.deepSeekModel : self.glmModel;
+    if ([model isEqualToString:currentModel]) return;
+    NSString *apiKey = self.providerMode == CQProviderModeDeepSeek
+        ? self.configManager.savedDeepSeekAPIKey : self.configManager.savedGLMAPIKey;
     NSError *error = nil;
-    if (apiKey.length == 0
-        || ![self.configManager switchToDeepSeekModel:model apiKey:apiKey error:&error]) {
-        self.errorMessage = error.localizedDescription ?: @"DeepSeek API Key 不可用";
+    BOOL switched = NO;
+    if (apiKey.length > 0) {
+        switched = self.providerMode == CQProviderModeDeepSeek
+            ? [self.configManager switchToDeepSeekModel:model apiKey:apiKey error:&error]
+            : [self.configManager switchToGLMModel:model apiKey:apiKey error:&error];
+    }
+    if (!switched) {
+        NSString *provider = self.providerMode == CQProviderModeDeepSeek ? @"DeepSeek" : @"智谱";
+        self.errorMessage = error.localizedDescription ?: [NSString stringWithFormat:@"%@ API Key 不可用", provider];
         [self render];
         return;
     }
-    self.deepSeekModel = model;
+    if (self.providerMode == CQProviderModeDeepSeek) self.deepSeekModel = model;
+    else self.glmModel = model;
     self.detail = @"模型已切换，新开的 Codex 会话生效";
     self.errorMessage = nil;
     [self render];
     [self offerToRestartCodexAfterChange:[NSString stringWithFormat:@"已切换到 %@", model]];
 }
 
-- (void)promptToChangeDeepSeekAPIKey {
-    if (self.providerMode != CQProviderModeDeepSeek) return;
-    NSString *apiKey = [self promptForDeepSeekAPIKeyWithTitle:@"更换 DeepSeek API Key"];
+- (void)promptToChangeExternalAPIKey {
+    if (self.providerMode == CQProviderModeCodex) return;
+    BOOL deepSeek = self.providerMode == CQProviderModeDeepSeek;
+    NSString *provider = deepSeek ? @"DeepSeek" : @"智谱 GLM";
+    NSString *apiKey = [self promptForAPIKeyWithTitle:[NSString stringWithFormat:@"更换 %@ API Key", provider]
+                                         providerMode:self.providerMode];
     if (apiKey.length == 0) {
         [self render];
         return;
     }
     NSError *error = nil;
-    if (![self.configManager switchToDeepSeekModel:self.deepSeekModel apiKey:apiKey error:&error]) {
+    BOOL switched = deepSeek
+        ? [self.configManager switchToDeepSeekModel:self.deepSeekModel apiKey:apiKey error:&error]
+        : [self.configManager switchToGLMModel:self.glmModel apiKey:apiKey error:&error];
+    if (!switched) {
         self.errorMessage = error.localizedDescription;
         [self render];
         return;
@@ -707,9 +837,10 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     self.deepSeekBalance = nil;
     self.detail = @"API Key 已更新";
     self.errorMessage = nil;
+    if (deepSeek) [self refreshDeepSeekBalance];
+    else self.connectionState = self.networkAvailable ? CQConnectionStateConnected : CQConnectionStateOffline;
     [self render];
-    [self refreshDeepSeekBalance];
-    [self offerToRestartCodexAfterChange:@"DeepSeek API Key 已更新"];
+    [self offerToRestartCodexAfterChange:[NSString stringWithFormat:@"%@ API Key 已更新", provider]];
 }
 
 - (void)refreshDeepSeekBalance {
@@ -846,6 +977,11 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
 
 - (void)connectOrRefresh {
     if (self.providerMode == CQProviderModeDeepSeek) [self refreshDeepSeekBalance];
+    else if (self.providerMode == CQProviderModeGLM) {
+        self.connectionState = self.networkAvailable ? CQConnectionStateConnected : CQConnectionStateOffline;
+        self.detail = self.networkAvailable ? @"GLM 配置已就绪" : @"网络不可用";
+        [self render];
+    }
     else if (self.client.running) [self refreshNow];
     else if (self.codexURL) [self connect];
     else [self locateAndConnect];
@@ -948,13 +1084,13 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     switch (self.connectionState) {
         case CQConnectionStateConnected:
             {
-                NSDate *updatedAt = self.providerMode == CQProviderModeDeepSeek
-                    ? self.deepSeekBalance.updatedAt : self.snapshot.updatedAt;
+                NSDate *updatedAt = self.providerMode == CQProviderModeDeepSeek ? self.deepSeekBalance.updatedAt
+                    : (self.providerMode == CQProviderModeCodex ? self.snapshot.updatedAt : nil);
                 if (updatedAt && -updatedAt.timeIntervalSinceNow > 120) return @"数据陈旧";
             }
             return @"已连接";
         case CQConnectionStateSignedOut:
-            return self.providerMode == CQProviderModeDeepSeek ? @"需要 API Key" : @"需要登录";
+            return self.providerMode == CQProviderModeCodex ? @"需要登录" : @"需要 API Key";
         case CQConnectionStateOffline: return @"离线";
         case CQConnectionStateError: return @"已断开";
         case CQConnectionStateConnecting: return @"连接中";
@@ -964,7 +1100,8 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
 
 - (void)render {
     NSString *metric = nil;
-    NSString *provider = self.providerMode == CQProviderModeDeepSeek ? @"DeepSeek" : @"Codex";
+    NSString *provider = self.providerMode == CQProviderModeDeepSeek ? @"DeepSeek"
+        : (self.providerMode == CQProviderModeGLM ? @"GLM" : @"Codex");
     if (self.providerMode == CQProviderModeCodex
         && self.connectionState == CQConnectionStateConnected && self.snapshot) {
         double minimum = self.snapshot.minimumRemainingPercent;
@@ -977,6 +1114,8 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
                 : ([info.currency isEqualToString:@"USD"] ? @"$" : @"");
             metric = [NSString stringWithFormat:@"%@%@", symbol, info.totalBalance];
         }
+    } else if (self.providerMode == CQProviderModeGLM && self.connectionState == CQConnectionStateConnected) {
+        metric = [self.glmModel isEqualToString:CQGLMFlashModel] ? @"Flash" : @"5.3";
     }
     if (metric) {
         self.statusItem.button.title = [NSString stringWithFormat:@" %@ %@", provider, metric];
@@ -992,13 +1131,19 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     [self.popoverController renderSnapshot:self.snapshot
                            deepSeekBalance:self.deepSeekBalance
                               providerMode:self.providerMode
-                                     model:self.deepSeekModel ?: CQDeepSeekFlashModel
+                                     model:self.providerMode == CQProviderModeGLM
+                                         ? (self.glmModel ?: CQGLMFlashModel)
+                                         : (self.deepSeekModel ?: CQDeepSeekFlashModel)
                                     status:[self statusText]
                                     detail:self.detail ?: @""
                                      error:self.errorMessage
                                 refreshing:self.refreshing
                                  signedOut:self.connectionState == CQConnectionStateSignedOut
                              launchAtLogin:[self isLaunchAtLoginEnabled]];
+    if (self.panel && self.currentPopoverPage == CQPopoverPageQuota) {
+        [self setPanelContentViewController:self.popoverController
+                                     height:self.popoverController.preferredContentSize.height];
+    }
 }
 
 @end

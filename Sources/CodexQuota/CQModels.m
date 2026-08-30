@@ -2,6 +2,8 @@
 
 NSString * const CQDeepSeekFlashModel = @"deepseek-v4-flash";
 NSString * const CQDeepSeekProModel = @"deepseek-v4-pro";
+NSString * const CQGLMFlashModel = @"glm-5.3-flash";
+NSString * const CQGLMModel = @"glm-5.3";
 
 @implementation CQRateLimitWindow
 - (double)remainingPercent {

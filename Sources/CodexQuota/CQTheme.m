@@ -295,8 +295,8 @@ NSView *CQDashboardGlassSurface(CGFloat cornerRadius) {
     backdrop.state = NSVisualEffectStateActive;
     backdrop.preferredCornerRadius = cornerRadius;
     BOOL reduceTransparency = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceTransparency;
-    backdrop.alphaValue = reduceTransparency ? 1.0 : 0.46;
-    backdrop.layer.backgroundColor = [CQTheme.panel colorWithAlphaComponent:reduceTransparency ? 0.98 : 0.04].CGColor;
+    backdrop.alphaValue = 1.0;
+    backdrop.layer.backgroundColor = [CQTheme.panel colorWithAlphaComponent:reduceTransparency ? 0.98 : 0.88].CGColor;
     backdrop.layer.borderWidth = 0.7;
     backdrop.layer.borderColor = [NSColor.whiteColor colorWithAlphaComponent:reduceTransparency ? 0.84 : 0.38].CGColor;
     backdrop.layer.shadowColor = NSColor.blackColor.CGColor;
@@ -326,7 +326,7 @@ NSVisualEffectView *CQGlassView(NSVisualEffectMaterial material, CGFloat cornerR
     view.wantsLayer = YES;
     view.preferredCornerRadius = cornerRadius;
     BOOL reduceTransparency = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceTransparency;
-    view.layer.backgroundColor = [CQTheme.mantle colorWithAlphaComponent:reduceTransparency ? 0.98 : 0.10].CGColor;
+    view.layer.backgroundColor = [CQTheme.mantle colorWithAlphaComponent:reduceTransparency ? 0.98 : 0.90].CGColor;
     view.layer.cornerRadius = cornerRadius;
     view.layer.cornerCurve = kCACornerCurveContinuous;
     view.layer.borderWidth = 0.7;
@@ -338,18 +338,21 @@ NSView *CQWindowGlassView(void) {
     NSView *container = [NSView new];
     container.wantsLayer = YES;
     container.layer.backgroundColor = NSColor.clearColor.CGColor;
+    container.layer.cornerRadius = 18;
+    container.layer.cornerCurve = kCACornerCurveContinuous;
+    container.layer.masksToBounds = YES;
     CQLiquidGlassView *backdrop = [CQLiquidGlassView new];
     backdrop.translatesAutoresizingMaskIntoConstraints = NO;
     backdrop.material = NSVisualEffectMaterialPopover;
     backdrop.blendingMode = NSVisualEffectBlendingModeBehindWindow;
     backdrop.state = NSVisualEffectStateActive;
-    backdrop.preferredCornerRadius = 0;
+    backdrop.preferredCornerRadius = 18;
     backdrop.configuresHostingWindow = YES;
     BOOL reduceTransparency = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceTransparency;
-    backdrop.alphaValue = reduceTransparency ? 1.0 : 0.38;
+    backdrop.alphaValue = 1.0;
     backdrop.layer.backgroundColor = reduceTransparency
         ? [CQTheme.base colorWithAlphaComponent:0.96].CGColor
-        : NSColor.clearColor.CGColor;
+        : [CQTheme.base colorWithAlphaComponent:0.82].CGColor;
     backdrop.layer.borderWidth = 0;
     backdrop.sheenLayer.colors = @[
         (id)[NSColor.whiteColor colorWithAlphaComponent:reduceTransparency ? 0.10 : 0.06].CGColor,

@@ -3,8 +3,10 @@
 
 static NSString * const CQConfigErrorDomain = @"com.muyang.codexquota.config";
 static NSString * const CQProviderModeDefaultsKey = @"ProviderMode";
-static NSString * const CQManagedMarker = @"# Managed by Codex Quota — DeepSeek";
-static NSString * const CQKeychainService = @"com.muyang.codexquota.deepseek";
+static NSString * const CQDeepSeekManagedMarker = @"# Managed by Codex Quota — DeepSeek";
+static NSString * const CQGLMManagedMarker = @"# Managed by Codex Quota — GLM";
+static NSString * const CQDeepSeekKeychainService = @"com.muyang.codexquota.deepseek";
+static NSString * const CQGLMKeychainService = @"com.muyang.codexquota.glm";
 static NSString * const CQKeychainAccount = @"api-key";
 
 @interface CQCodexConfigManager ()
@@ -66,13 +68,16 @@ static NSString * const CQKeychainAccount = @"api-key";
 
 - (CQProviderMode)currentMode {
     NSString *config = [self stringAtURL:self.configURL];
-    if ([config containsString:CQManagedMarker]) return CQProviderModeDeepSeek;
+    if ([config containsString:CQDeepSeekManagedMarker]) return CQProviderModeDeepSeek;
+    if ([config containsString:CQGLMManagedMarker]) return CQProviderModeGLM;
     return CQProviderModeCodex;
 }
 
-- (NSString *)currentDeepSeekModel {
+- (NSString *)currentModelWithMarker:(NSString *)marker
+                       allowedModels:(NSArray<NSString *> *)allowedModels
+                            fallback:(NSString *)fallback {
     NSString *config = [self stringAtURL:self.configURL];
-    if (![config containsString:CQManagedMarker]) return CQDeepSeekFlashModel;
+    if (![config containsString:marker]) return fallback;
     NSRegularExpression *expression = [NSRegularExpression
         regularExpressionWithPattern:@"(?m)^\\s*model\\s*=\\s*\"([^\"]+)\""
                               options:0
@@ -82,15 +87,27 @@ static NSString * const CQKeychainAccount = @"api-key";
                                                          range:NSMakeRange(0, config.length)];
     if (match.numberOfRanges >= 2) {
         NSString *model = [config substringWithRange:[match rangeAtIndex:1]];
-        if ([model isEqualToString:CQDeepSeekFlashModel]
-            || [model isEqualToString:CQDeepSeekProModel]) return model;
+        if ([allowedModels containsObject:model]) return model;
     }
-    return CQDeepSeekFlashModel;
+    return fallback;
+}
+
+- (NSString *)currentDeepSeekModel {
+    return [self currentModelWithMarker:CQDeepSeekManagedMarker
+                          allowedModels:@[CQDeepSeekFlashModel, CQDeepSeekProModel]
+                               fallback:CQDeepSeekFlashModel];
+}
+
+- (NSString *)currentGLMModel {
+    return [self currentModelWithMarker:CQGLMManagedMarker
+                          allowedModels:@[CQGLMFlashModel, CQGLMModel]
+                               fallback:CQGLMFlashModel];
 }
 
 - (BOOL)managedConfigurationNeedsHistoryMigration {
     NSString *current = [self stringAtURL:self.configURL];
-    if (![current containsString:CQManagedMarker]) return NO;
+    if (![current containsString:CQDeepSeekManagedMarker]
+        && ![current containsString:CQGLMManagedMarker]) return NO;
     NSString *original = [self originalConfig];
     NSArray<NSString *> *forcedLines = @[
         @"preferred_auth_method = \"apikey\"",
@@ -102,10 +119,10 @@ static NSString * const CQKeychainAccount = @"api-key";
     return NO;
 }
 
-- (NSString *)savedDeepSeekAPIKey {
+- (NSString *)savedAPIKeyForService:(NSString *)service marker:(NSString *)marker {
     NSDictionary *query = @{
         (__bridge id)kSecClass: (__bridge id)kSecClassGenericPassword,
-        (__bridge id)kSecAttrService: CQKeychainService,
+        (__bridge id)kSecAttrService: service,
         (__bridge id)kSecAttrAccount: CQKeychainAccount,
         (__bridge id)kSecReturnData: @YES,
         (__bridge id)kSecMatchLimit: (__bridge id)kSecMatchLimitOne
@@ -121,7 +138,7 @@ static NSString * const CQKeychainAccount = @"api-key";
     }
 
     NSString *config = [self stringAtURL:self.configURL];
-    if (![config containsString:CQManagedMarker]) return nil;
+    if (![config containsString:marker]) return nil;
     NSRegularExpression *expression = [NSRegularExpression
         regularExpressionWithPattern:@"experimental_bearer_token\\s*=\\s*\"([^\"]+)\""
                               options:0
@@ -133,11 +150,22 @@ static NSString * const CQKeychainAccount = @"api-key";
     return [config substringWithRange:[match rangeAtIndex:1]];
 }
 
-- (BOOL)saveAPIKey:(NSString *)apiKey error:(NSError **)error {
+- (NSString *)savedDeepSeekAPIKey {
+    return [self savedAPIKeyForService:CQDeepSeekKeychainService marker:CQDeepSeekManagedMarker];
+}
+
+- (NSString *)savedGLMAPIKey {
+    return [self savedAPIKeyForService:CQGLMKeychainService marker:CQGLMManagedMarker];
+}
+
+- (BOOL)saveAPIKey:(NSString *)apiKey
+            service:(NSString *)service
+       providerName:(NSString *)providerName
+              error:(NSError **)error {
     NSData *data = [apiKey dataUsingEncoding:NSUTF8StringEncoding];
     NSDictionary *query = @{
         (__bridge id)kSecClass: (__bridge id)kSecClassGenericPassword,
-        (__bridge id)kSecAttrService: CQKeychainService,
+        (__bridge id)kSecAttrService: service,
         (__bridge id)kSecAttrAccount: CQKeychainAccount
     };
     OSStatus status = SecItemUpdate((__bridge CFDictionaryRef)query,
@@ -151,20 +179,27 @@ static NSString * const CQKeychainAccount = @"api-key";
     if (status == errSecSuccess) return YES;
     if (error) {
         *error = [self errorWithCode:status
-                         description:@"无法将 DeepSeek API Key 保存到 macOS 钥匙串"];
+                         description:[NSString stringWithFormat:@"无法将 %@ API Key 保存到 macOS 钥匙串", providerName]];
     }
     return NO;
 }
 
-- (BOOL)validateAPIKey:(NSString *)apiKey error:(NSError **)error {
+- (BOOL)validateAPIKey:(NSString *)apiKey
+        requiredPrefix:(NSString *)requiredPrefix
+          providerName:(NSString *)providerName
+                 error:(NSError **)error {
     NSString *trimmed = [apiKey stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     BOOL valid = [trimmed isEqualToString:apiKey]
-        && [apiKey hasPrefix:@"sk-"]
+        && (requiredPrefix.length == 0 || [apiKey hasPrefix:requiredPrefix])
         && apiKey.length > 5
         && [apiKey rangeOfString:@"\""].location == NSNotFound
         && [apiKey rangeOfCharacterFromSet:NSCharacterSet.newlineCharacterSet].location == NSNotFound;
     if (valid) return YES;
-    if (error) *error = [self errorWithCode:-1 description:@"请输入以 sk- 开头的有效 DeepSeek API Key"];
+    if (error) {
+        NSString *prefixHint = requiredPrefix.length > 0 ? [NSString stringWithFormat:@"以 %@ 开头的", requiredPrefix] : @"";
+        *error = [self errorWithCode:-1
+                         description:[NSString stringWithFormat:@"请输入%@有效 %@ API Key", prefixHint, providerName]];
+    }
     return NO;
 }
 
@@ -186,9 +221,15 @@ static NSString * const CQKeychainAccount = @"api-key";
     }
 
     NSString *currentConfig = [self stringAtURL:self.configURL];
-    if ([currentConfig containsString:@"[model_providers.deepseek]"]
-        && ![currentConfig containsString:CQManagedMarker]) {
-        if (error) *error = [self errorWithCode:-3 description:@"检测到其他工具写入的 DeepSeek 配置。请先恢复默认 Codex 配置，再使用此开关。"];
+    BOOL hasUnmanagedDeepSeek = [currentConfig containsString:@"[model_providers.deepseek]"]
+        && ![currentConfig containsString:CQDeepSeekManagedMarker];
+    BOOL hasUnmanagedGLM = [currentConfig containsString:@"[model_providers.zhipu]"]
+        && ![currentConfig containsString:CQGLMManagedMarker];
+    if (hasUnmanagedDeepSeek || hasUnmanagedGLM) {
+        NSString *provider = hasUnmanagedDeepSeek ? @"DeepSeek" : @"GLM";
+        NSString *description = [NSString stringWithFormat:
+            @"检测到其他工具写入的 %@ 配置。请先恢复默认 Codex 配置，再使用此开关。", provider];
+        if (error) *error = [self errorWithCode:-3 description:description];
         return NO;
     }
 
@@ -255,6 +296,7 @@ static NSString * const CQKeychainAccount = @"api-key";
             NSString *section = [trimmed stringByTrimmingCharactersInSet:
                 [NSCharacterSet characterSetWithCharactersInString:@"[] "]];
             skipSection = [section isEqualToString:@"model_providers.deepseek"]
+                || [section isEqualToString:@"model_providers.zhipu"]
                 || [section isEqualToString:@"profiles"]
                 || [section hasPrefix:@"profiles."];
             if (!skipSection) [kept addObject:line];
@@ -284,7 +326,7 @@ static NSString * const CQKeychainAccount = @"api-key";
 - (NSString *)deepSeekConfigForModel:(NSString *)model apiKey:(NSString *)apiKey original:(NSString *)original {
     NSString *preserved = [self filteredOriginalConfig:original];
     NSMutableString *config = [NSMutableString string];
-    [config appendFormat:@"%@\n", CQManagedMarker];
+    [config appendFormat:@"%@\n", CQDeepSeekManagedMarker];
     [config appendFormat:@"model = \"%@\"\n", [self tomlEscapedString:model]];
     [config appendString:@"model_provider = \"deepseek\"\n"];
     [config appendString:@"model_reasoning_effort = \"high\"\n"];
@@ -294,6 +336,25 @@ static NSString * const CQKeychainAccount = @"api-key";
     [config appendString:@"\n[model_providers.deepseek]\n"];
     [config appendString:@"name = \"deepseek\"\n"];
     [config appendString:@"base_url = \"https://api.deepseek.com/\"\n"];
+    [config appendString:@"wire_api = \"responses\"\n"];
+    [config appendFormat:@"experimental_bearer_token = \"%@\"\n", [self tomlEscapedString:apiKey]];
+    return config;
+}
+
+- (NSString *)glmConfigForModel:(NSString *)model apiKey:(NSString *)apiKey original:(NSString *)original {
+    NSString *preserved = [self filteredOriginalConfig:original];
+    NSMutableString *config = [NSMutableString string];
+    [config appendFormat:@"%@\n", CQGLMManagedMarker];
+    [config appendFormat:@"model = \"%@\"\n", [self tomlEscapedString:model]];
+    [config appendString:@"model_provider = \"zhipu\"\n"];
+    [config appendString:@"model_reasoning_effort = \"high\"\n"];
+    [config appendString:@"model_context_window = 1000000\n"];
+    [config appendFormat:@"model_catalog_json = \"%@\"\n",
+        [self tomlEscapedString:self.modelsURL.path]];
+    if (preserved.length > 0) [config appendFormat:@"\n%@\n", preserved];
+    [config appendString:@"\n[model_providers.zhipu]\n"];
+    [config appendString:@"name = \"Zhipu GLM\"\n"];
+    [config appendString:@"base_url = \"https://open.bigmodel.cn/api/v1\"\n"];
     [config appendString:@"wire_api = \"responses\"\n"];
     [config appendFormat:@"experimental_bearer_token = \"%@\"\n", [self tomlEscapedString:apiKey]];
     return config;
@@ -369,18 +430,33 @@ static NSString * const CQKeychainAccount = @"api-key";
     return @{ @"models": @[model, proModel] };
 }
 
-- (BOOL)switchToDeepSeekModel:(NSString *)model apiKey:(NSString *)apiKey error:(NSError **)error {
-    if (![model isEqualToString:CQDeepSeekFlashModel]
-        && ![model isEqualToString:CQDeepSeekProModel]) {
-        if (error) *error = [self errorWithCode:-5 description:@"不支持的 DeepSeek 模型"];
-        return NO;
-    }
-    if (![self validateAPIKey:apiKey error:error]
-        || ![self saveAPIKey:apiKey error:error]
-        || ![self prepareBackupWithError:error]) return NO;
+- (NSDictionary *)glmModelCatalog {
+    NSDictionary *deepSeekCatalog = [self deepSeekModelCatalog];
+    NSMutableDictionary *flashModel = [deepSeekCatalog[@"models"][0] mutableCopy];
+    flashModel[@"slug"] = CQGLMFlashModel;
+    flashModel[@"display_name"] = @"GLM-5.3-Flash";
+    flashModel[@"description"] = @"Fast multimodal agentic coding model.";
+    flashModel[@"input_modalities"] = @[@"text", @"image"];
+    flashModel[@"supports_image_detail_original"] = @YES;
+    flashModel[@"context_window"] = @1000000;
+    flashModel[@"max_context_window"] = @1000000;
 
+    NSMutableDictionary *flagshipModel = [flashModel mutableCopy];
+    flagshipModel[@"slug"] = CQGLMModel;
+    flagshipModel[@"display_name"] = @"GLM-5.3";
+    flagshipModel[@"description"] = @"Flagship agentic coding model.";
+    flagshipModel[@"input_modalities"] = @[@"text"];
+    flagshipModel[@"supports_image_detail_original"] = @NO;
+    flagshipModel[@"priority"] = @2;
+    return @{ @"models": @[flashModel, flagshipModel] };
+}
+
+- (BOOL)writeModelCatalog:(NSDictionary *)catalog
+                    config:(NSString *)config
+                      mode:(CQProviderMode)mode
+                     error:(NSError **)error {
     NSError *jsonError = nil;
-    NSData *modelsData = [NSJSONSerialization dataWithJSONObject:[self deepSeekModelCatalog]
+    NSData *modelsData = [NSJSONSerialization dataWithJSONObject:catalog
                                                          options:NSJSONWritingPrettyPrinted
                                                            error:&jsonError];
     if (!modelsData) {
@@ -392,7 +468,6 @@ static NSString * const CQKeychainAccount = @"api-key";
         if (error) *error = writeError;
         return NO;
     }
-    NSString *config = [self deepSeekConfigForModel:model apiKey:apiKey original:[self originalConfig]];
     if (![config writeToURL:self.configURL atomically:YES encoding:NSUTF8StringEncoding error:&writeError]) {
         NSDictionary *manifest = [self backupManifest];
         [self restoreOriginalFileAtURL:self.modelsURL
@@ -402,8 +477,41 @@ static NSString * const CQKeychainAccount = @"api-key";
         if (error) *error = writeError;
         return NO;
     }
-    [NSUserDefaults.standardUserDefaults setInteger:CQProviderModeDeepSeek forKey:CQProviderModeDefaultsKey];
+    [NSUserDefaults.standardUserDefaults setInteger:mode forKey:CQProviderModeDefaultsKey];
     return YES;
+}
+
+- (BOOL)switchToDeepSeekModel:(NSString *)model apiKey:(NSString *)apiKey error:(NSError **)error {
+    if (![model isEqualToString:CQDeepSeekFlashModel]
+        && ![model isEqualToString:CQDeepSeekProModel]) {
+        if (error) *error = [self errorWithCode:-5 description:@"不支持的 DeepSeek 模型"];
+        return NO;
+    }
+    if (![self validateAPIKey:apiKey requiredPrefix:@"sk-" providerName:@"DeepSeek" error:error]
+        || ![self saveAPIKey:apiKey service:CQDeepSeekKeychainService providerName:@"DeepSeek" error:error]
+        || ![self prepareBackupWithError:error]) return NO;
+
+    NSString *config = [self deepSeekConfigForModel:model apiKey:apiKey original:[self originalConfig]];
+    return [self writeModelCatalog:[self deepSeekModelCatalog]
+                            config:config
+                              mode:CQProviderModeDeepSeek
+                             error:error];
+}
+
+- (BOOL)switchToGLMModel:(NSString *)model apiKey:(NSString *)apiKey error:(NSError **)error {
+    if (![model isEqualToString:CQGLMFlashModel] && ![model isEqualToString:CQGLMModel]) {
+        if (error) *error = [self errorWithCode:-7 description:@"不支持的 GLM 模型"];
+        return NO;
+    }
+    if (![self validateAPIKey:apiKey requiredPrefix:@"" providerName:@"智谱" error:error]
+        || ![self saveAPIKey:apiKey service:CQGLMKeychainService providerName:@"智谱" error:error]
+        || ![self prepareBackupWithError:error]) return NO;
+
+    NSString *config = [self glmConfigForModel:model apiKey:apiKey original:[self originalConfig]];
+    return [self writeModelCatalog:[self glmModelCatalog]
+                            config:config
+                              mode:CQProviderModeGLM
+                             error:error];
 }
 
 - (BOOL)restoreOriginalFileAtURL:(NSURL *)target
@@ -422,7 +530,8 @@ static NSString * const CQKeychainAccount = @"api-key";
     NSDictionary *manifest = [self backupManifest];
     if (!manifest) {
         NSString *config = [self stringAtURL:self.configURL];
-        if ([config containsString:CQManagedMarker]) {
+        if ([config containsString:CQDeepSeekManagedMarker]
+            || [config containsString:CQGLMManagedMarker]) {
             if (error) *error = [self errorWithCode:-6 description:@"找不到原始 Codex 配置备份，未执行恢复"];
             return NO;
         }

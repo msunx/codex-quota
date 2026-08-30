@@ -4,11 +4,14 @@ NS_ASSUME_NONNULL_BEGIN
 
 typedef NS_ENUM(NSInteger, CQProviderMode) {
     CQProviderModeCodex,
-    CQProviderModeDeepSeek
+    CQProviderModeDeepSeek,
+    CQProviderModeGLM
 };
 
 FOUNDATION_EXPORT NSString * const CQDeepSeekFlashModel;
 FOUNDATION_EXPORT NSString * const CQDeepSeekProModel;
+FOUNDATION_EXPORT NSString * const CQGLMFlashModel;
+FOUNDATION_EXPORT NSString * const CQGLMModel;
 
 @interface CQRateLimitWindow : NSObject
 @property(nonatomic, copy) NSString *limitID;

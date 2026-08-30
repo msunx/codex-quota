@@ -1,7 +1,7 @@
 #import <Foundation/Foundation.h>
 
 static NSArray<NSString *> *CQVisibleModelProviders(void) {
-    return @[@"openai", @"deepseek", @"custom"];
+    return @[@"openai", @"deepseek", @"zhipu", @"custom"];
 }
 
 static NSString *CQRealCLIPath(void) {
