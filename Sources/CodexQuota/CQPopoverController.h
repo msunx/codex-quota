@@ -1,5 +1,6 @@
 #import <Cocoa/Cocoa.h>
 #import "CQModels.h"
+#import "CQTaskMonitor.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -12,10 +13,13 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy, nullable) void (^changeAPIKeyHandler)(void);
 @property(nonatomic, copy, nullable) void (^extensionManagerHandler)(void);
 @property(nonatomic, copy, nullable) void (^launchAtLoginHandler)(BOOL enabled);
+@property(nonatomic, copy, nullable) void (^taskSelectedHandler)(CQCodexTask *task);
+@property(nonatomic, copy, nullable) void (^markAllTasksViewedHandler)(void);
 @property(nonatomic, copy, nullable) void (^quitHandler)(void);
 
 - (void)renderSnapshot:(CQQuotaSnapshot * _Nullable)snapshot
        deepSeekBalance:(CQDeepSeekBalance * _Nullable)deepSeekBalance
+          taskSnapshot:(CQTaskSnapshot * _Nullable)taskSnapshot
           providerMode:(CQProviderMode)providerMode
                  model:(NSString *)model
                 status:(NSString *)status

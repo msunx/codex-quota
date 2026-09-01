@@ -46,6 +46,7 @@ fi
     -framework Network \
     -framework Security \
     -framework ServiceManagement \
+    -lsqlite3 \
     -o "$MACOS_PATH/CodexQuota"
 
 /usr/bin/clang \

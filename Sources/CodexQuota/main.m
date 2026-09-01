@@ -8,11 +8,14 @@
 #import "CQExtensionManagerController.h"
 #import "CQExtensions.h"
 #import "CQPopoverController.h"
+#import "CQTaskMonitor.h"
 #import "CQTheme.h"
 
 static NSString * const CQSavedCodexPathKey = @"CodexExecutablePath";
 static CGFloat const CQPopoverWidth = 360.0;
 static CGFloat const CQPanelAnchorGap = 6.0;
+static CGFloat const CQPanelScreenEdgeInset = 8.0;
+static CGFloat const CQPanelMinimumUsableHeight = 320.0;
 
 static os_log_t CQLogger(void) {
     static os_log_t logger;
@@ -57,6 +60,8 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
 @property(nonatomic, strong, nullable) CQCodexClient *client;
 @property(nonatomic, strong) CQCodexConfigManager *configManager;
 @property(nonatomic, strong) CQDeepSeekClient *deepSeekClient;
+@property(nonatomic, strong) CQTaskMonitor *taskMonitor;
+@property(nonatomic, strong) CQTaskSnapshot *taskSnapshot;
 @property(nonatomic, strong, nullable) CQQuotaSnapshot *snapshot;
 @property(nonatomic, strong, nullable) CQDeepSeekBalance *deepSeekBalance;
 @property(nonatomic) CQProviderMode providerMode;
@@ -81,6 +86,9 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
 - (void)configurePanel;
 - (void)positionPanel;
 - (void)setPanelContentViewController:(NSViewController *)controller height:(CGFloat)height;
+- (void)focusCodexTask:(CQCodexTask *)task;
+- (BOOL)isCodexApplication:(nullable NSRunningApplication *)application;
+- (BOOL)isCodexFrontmost;
 @end
 
 @implementation CQAppDelegate
@@ -130,6 +138,18 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     [self configureMenuBar];
     [self configurePanel];
     [self configureSystemObservers];
+    self.taskSnapshot = [CQTaskSnapshot emptySnapshot];
+    self.taskMonitor = [CQTaskMonitor new];
+    __weak typeof(self) weakSelf = self;
+    self.taskMonitor.snapshotDidUpdate = ^(CQTaskSnapshot *taskSnapshot) {
+        weakSelf.taskSnapshot = taskSnapshot;
+        if (taskSnapshot.unreadCompletedTasks.count > 0 && [weakSelf isCodexFrontmost]) {
+            [weakSelf.taskMonitor markAllCompletedViewed];
+            return;
+        }
+        [weakSelf render];
+    };
+    [self.taskMonitor start];
     [self render];
     if (self.providerMode == CQProviderModeDeepSeek) [self refreshDeepSeekBalance];
     else if (self.providerMode == CQProviderModeCodex) [self locateAndConnect];
@@ -219,8 +239,38 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     }
     CQProviderMode previewMode = glmPreview ? CQProviderModeGLM
         : (deepSeekPreview ? CQProviderModeDeepSeek : CQProviderModeCodex);
+    CQCodexTask *waitingTask = [CQCodexTask new];
+    waitingTask.threadID = @"preview-waiting";
+    waitingTask.turnID = @"preview-waiting-turn";
+    waitingTask.title = @"确认生产环境发布方案";
+    waitingTask.projectName = @"codex-quota";
+    waitingTask.workingDirectory = [NSHomeDirectory() stringByAppendingPathComponent:@"Develop/codex-quota"];
+    waitingTask.state = CQTaskStateWaitingForApproval;
+    waitingTask.startedAt = [NSDate dateWithTimeIntervalSinceNow:-8 * 60];
+    CQCodexTask *runningTask = [CQCodexTask new];
+    runningTask.threadID = @"preview-running";
+    runningTask.turnID = @"preview-running-turn";
+    runningTask.title = @"重新设计任务状态看板";
+    runningTask.projectName = @"codex-quota";
+    runningTask.workingDirectory = [NSHomeDirectory() stringByAppendingPathComponent:@"Develop/codex-quota"];
+    runningTask.state = CQTaskStateRunning;
+    runningTask.startedAt = [NSDate dateWithTimeIntervalSinceNow:-3 * 60];
+    CQCodexTask *completedTask = [CQCodexTask new];
+    completedTask.threadID = @"preview-completed";
+    completedTask.turnID = @"preview-completed-turn";
+    completedTask.title = @"修复 Markdown 文档预览";
+    completedTask.projectName = @"tjg";
+    completedTask.workingDirectory = [NSHomeDirectory() stringByAppendingPathComponent:@"Develop/tjg"];
+    completedTask.state = CQTaskStateCompletedUnread;
+    completedTask.startedAt = [NSDate dateWithTimeIntervalSinceNow:-14 * 60];
+    completedTask.completedAt = [NSDate dateWithTimeIntervalSinceNow:-2 * 60];
+    CQTaskSnapshot *taskSnapshot = [CQTaskSnapshot emptySnapshot];
+    taskSnapshot.waitingForApprovalTasks = @[waitingTask];
+    taskSnapshot.runningTasks = @[runningTask];
+    taskSnapshot.unreadCompletedTasks = @[completedTask];
     [self.popoverController renderSnapshot:snapshot
                            deepSeekBalance:deepSeekBalance
+                              taskSnapshot:taskSnapshot
                               providerMode:previewMode
                                      model:glmPreview ? CQGLMFlashModel : CQDeepSeekFlashModel
                                     status:@"已连接"
@@ -229,6 +279,7 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
                                 refreshing:NO
                                  signedOut:NO
                              launchAtLogin:NO];
+    [self.previewWindow setContentSize:self.popoverController.preferredContentSize];
     if ([NSProcessInfo.processInfo.arguments containsObject:@"--preview-api-key"]) {
         dispatch_async(dispatch_get_main_queue(), ^{
             NSString *value = [self promptForAPIKeyWithTitle:@"API Key 粘贴验证" providerMode:CQProviderModeDeepSeek];
@@ -242,6 +293,7 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
 
 - (void)applicationWillTerminate:(NSNotification *)notification {
     [self.pollTimer invalidate];
+    [self.taskMonitor stop];
     if (self.pathMonitor) nw_path_monitor_cancel(self.pathMonitor);
     [self.client stop];
     [self.deepSeekClient cancel];
@@ -308,6 +360,8 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     self.popoverController.changeAPIKeyHandler = ^{ [weakSelf promptToChangeExternalAPIKey]; };
     self.popoverController.extensionManagerHandler = ^{ [weakSelf showExtensionManager]; };
     self.popoverController.launchAtLoginHandler = ^(BOOL enabled) { [weakSelf setLaunchAtLogin:enabled]; };
+    self.popoverController.taskSelectedHandler = ^(CQCodexTask *task) { [weakSelf focusCodexTask:task]; };
+    self.popoverController.markAllTasksViewedHandler = ^{ [weakSelf.taskMonitor markAllCompletedViewed]; };
     self.popoverController.quitHandler = ^{ [NSApp terminate:nil]; };
 
     self.panel = [[CQGlassPanel alloc]
@@ -343,7 +397,24 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
 
 - (void)setPanelContentViewController:(NSViewController *)controller height:(CGFloat)height {
     if (self.panel.contentViewController != controller) self.panel.contentViewController = controller;
-    [self.panel setContentSize:NSMakeSize(CQPopoverWidth, height)];
+    NSStatusBarButton *button = self.statusItem.button;
+    NSWindow *statusWindow = button.window;
+    NSScreen *screen = statusWindow.screen ?: NSScreen.mainScreen;
+    CGFloat constrainedHeight = height;
+    if (screen) {
+        NSRect availableFrame = screen.visibleFrame;
+        CGFloat maximumHeight = NSHeight(availableFrame) - CQPanelScreenEdgeInset * 2;
+        if (button && statusWindow) {
+            NSRect anchorRect = [button convertRect:button.bounds toView:nil];
+            anchorRect = [statusWindow convertRectToScreen:anchorRect];
+            CGFloat heightBelowAnchor = NSMinY(anchorRect) - CQPanelAnchorGap
+                - NSMinY(availableFrame) - CQPanelScreenEdgeInset;
+            if (heightBelowAnchor > 0) maximumHeight = MIN(maximumHeight, heightBelowAnchor);
+        }
+        maximumHeight = MAX(CQPanelMinimumUsableHeight, floor(maximumHeight));
+        constrainedHeight = MIN(height, maximumHeight);
+    }
+    [self.panel setContentSize:NSMakeSize(CQPopoverWidth, constrainedHeight)];
     [self positionPanel];
 }
 
@@ -357,14 +428,13 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     if (!screen) return;
     NSRect availableFrame = screen.visibleFrame;
     NSSize panelSize = self.panel.frame.size;
-    CGFloat edgeInset = 8.0;
     CGFloat x = NSMidX(anchorRect) - panelSize.width / 2.0;
-    x = MAX(NSMinX(availableFrame) + edgeInset,
-            MIN(x, NSMaxX(availableFrame) - panelSize.width - edgeInset));
+    x = MAX(NSMinX(availableFrame) + CQPanelScreenEdgeInset,
+            MIN(x, NSMaxX(availableFrame) - panelSize.width - CQPanelScreenEdgeInset));
     CGFloat y = NSMinY(anchorRect) - panelSize.height - CQPanelAnchorGap;
-    if (y < NSMinY(availableFrame) + edgeInset) {
+    if (y < NSMinY(availableFrame) + CQPanelScreenEdgeInset) {
         y = MIN(NSMaxY(anchorRect) + CQPanelAnchorGap,
-                NSMaxY(availableFrame) - panelSize.height - edgeInset);
+                NSMaxY(availableFrame) - panelSize.height - CQPanelScreenEdgeInset);
     }
     [self.panel setFrameOrigin:NSMakePoint(round(x), round(y))];
 }
@@ -373,6 +443,10 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     [NSWorkspace.sharedWorkspace.notificationCenter addObserver:self
                                                        selector:@selector(systemDidWake:)
                                                            name:NSWorkspaceDidWakeNotification
+                                                         object:nil];
+    [NSWorkspace.sharedWorkspace.notificationCenter addObserver:self
+                                                       selector:@selector(workspaceDidActivateApplication:)
+                                                           name:NSWorkspaceDidActivateApplicationNotification
                                                          object:nil];
     self.pathMonitor = nw_path_monitor_create();
     dispatch_queue_t queue = dispatch_queue_create("com.muyang.codexquota.network", DISPATCH_QUEUE_SERIAL);
@@ -412,6 +486,7 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     else [self showQuotaPanel];
     [self positionPanel];
     [self.panel makeKeyAndOrderFront:nil];
+    [self.taskMonitor refreshNow];
     [self refreshNow];
 }
 
@@ -440,6 +515,12 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
 
 - (void)systemDidWake:(NSNotification *)notification {
     [self connectOrRefresh];
+}
+
+- (void)workspaceDidActivateApplication:(NSNotification *)notification {
+    NSRunningApplication *application = notification.userInfo[NSWorkspaceApplicationKey];
+    if (![self isCodexApplication:application]) return;
+    [self.taskMonitor markAllCompletedViewed];
 }
 
 - (void)poll:(NSTimer *)timer {
@@ -608,6 +689,14 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     return [NSRunningApplication runningApplicationsWithBundleIdentifier:@"com.openai.codex"];
 }
 
+- (BOOL)isCodexApplication:(NSRunningApplication *)application {
+    return [application.bundleIdentifier isEqualToString:@"com.openai.codex"];
+}
+
+- (BOOL)isCodexFrontmost {
+    return [self isCodexApplication:NSWorkspace.sharedWorkspace.frontmostApplication];
+}
+
 - (NSURL *)codexApplicationURL {
     for (NSRunningApplication *application in [self runningCodexApplications]) {
         if (application.bundleURL) return application.bundleURL;
@@ -618,6 +707,34 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
         if ([NSFileManager.defaultManager fileExistsAtPath:path]) return [NSURL fileURLWithPath:path];
     }
     return nil;
+}
+
+- (void)focusCodexTask:(CQCodexTask *)task {
+    if (task.state == CQTaskStateCompletedUnread) [self.taskMonitor markTaskViewed:task];
+    NSArray<NSRunningApplication *> *applications = [self runningCodexApplications];
+    if (applications.count > 0) {
+        [applications.firstObject activateWithOptions:0];
+        return;
+    }
+    NSURL *url = [self codexApplicationURL];
+    if (!url) {
+        self.errorMessage = @"未找到 Codex / ChatGPT 客户端";
+        [self render];
+        return;
+    }
+    NSWorkspaceOpenConfiguration *configuration = [NSWorkspaceOpenConfiguration configuration];
+    configuration.activates = YES;
+    __weak typeof(self) weakSelf = self;
+    [NSWorkspace.sharedWorkspace openApplicationAtURL:url
+                                        configuration:configuration
+                                    completionHandler:^(NSRunningApplication *application, NSError *error) {
+        (void)application;
+        if (!error) return;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            weakSelf.errorMessage = error.localizedDescription ?: @"无法打开 Codex";
+            [weakSelf render];
+        });
+    }];
 }
 
 - (void)openCodexApplicationAtURL:(NSURL *)url {
@@ -1117,19 +1234,57 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     } else if (self.providerMode == CQProviderModeGLM && self.connectionState == CQConnectionStateConnected) {
         metric = [self.glmModel isEqualToString:CQGLMFlashModel] ? @"Flash" : @"5.3";
     }
+    NSString *taskSuffix = @"";
+    NSColor *taskColor = nil;
+    NSUInteger waitingCount = self.taskSnapshot.waitingForApprovalTasks.count;
+    NSUInteger completedCount = self.taskSnapshot.unreadCompletedTasks.count;
+    NSUInteger runningCount = self.taskSnapshot.runningTasks.count;
+    if (waitingCount > 0) {
+        taskSuffix = [NSString stringWithFormat:@" · !%lu", (unsigned long)waitingCount];
+        taskColor = CQTheme.yellow;
+    } else if (completedCount > 0) {
+        taskSuffix = [NSString stringWithFormat:@" · ✓%lu", (unsigned long)completedCount];
+        taskColor = CQTheme.green;
+    } else if (runningCount > 0) {
+        taskSuffix = [NSString stringWithFormat:@" · ●%lu", (unsigned long)runningCount];
+        taskColor = CQTheme.accent;
+    }
+    NSString *baseTitle = nil;
     if (metric) {
-        self.statusItem.button.title = [NSString stringWithFormat:@" %@ %@", provider, metric];
+        baseTitle = [NSString stringWithFormat:@" %@ %@", provider, metric];
     } else if (self.connectionState == CQConnectionStateError
                || self.connectionState == CQConnectionStateOffline
                || self.connectionState == CQConnectionStateSignedOut) {
-        self.statusItem.button.title = [NSString stringWithFormat:@" %@ —", provider];
+        baseTitle = [NSString stringWithFormat:@" %@ —", provider];
     } else {
-        self.statusItem.button.title = [NSString stringWithFormat:@" %@ …", provider];
+        baseTitle = [NSString stringWithFormat:@" %@ …", provider];
     }
+    NSFont *statusFont = [NSFont monospacedDigitSystemFontOfSize:12 weight:NSFontWeightMedium];
+    NSMutableAttributedString *statusTitle = [[NSMutableAttributedString alloc] initWithString:baseTitle attributes:@{
+        NSFontAttributeName: statusFont,
+        NSForegroundColorAttributeName: NSColor.labelColor
+    }];
+    if (taskSuffix.length > 0) {
+        [statusTitle appendAttributedString:[[NSAttributedString alloc] initWithString:taskSuffix attributes:@{
+            NSFontAttributeName: statusFont,
+            NSForegroundColorAttributeName: taskColor
+        }]];
+    }
+    self.statusItem.button.attributedTitle = statusTitle;
+    self.statusItem.button.toolTip = [NSString stringWithFormat:
+        @"Codex Quota\n待审核 %lu · 未查看完成 %lu · 运行中 %lu",
+        (unsigned long)waitingCount,
+        (unsigned long)completedCount,
+        (unsigned long)runningCount];
     self.statusItem.button.accessibilityLabel = [NSString stringWithFormat:@"%@ 模型状态", provider];
-    self.statusItem.button.accessibilityValue = metric ?: [self statusText];
+    self.statusItem.button.accessibilityValue = [NSString stringWithFormat:@"%@；待审核 %lu，未查看完成 %lu，运行中 %lu",
+        metric ?: [self statusText],
+        (unsigned long)waitingCount,
+        (unsigned long)completedCount,
+        (unsigned long)runningCount];
     [self.popoverController renderSnapshot:self.snapshot
                            deepSeekBalance:self.deepSeekBalance
+                              taskSnapshot:self.taskSnapshot
                               providerMode:self.providerMode
                                      model:self.providerMode == CQProviderModeGLM
                                          ? (self.glmModel ?: CQGLMFlashModel)
