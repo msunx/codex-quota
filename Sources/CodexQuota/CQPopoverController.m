@@ -455,6 +455,7 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
 @property(nonatomic, strong) NSSegmentedControl *providerControl;
 @property(nonatomic, strong) NSView *taskPanel;
 @property(nonatomic, strong) NSTextField *taskCountLabel;
+@property(nonatomic, strong) NSButton *markAllTasksViewedButton;
 @property(nonatomic, strong) NSStackView *taskStack;
 @property(nonatomic, strong) NSMutableDictionary<NSString *, CQTaskRowButton *> *taskRows;
 @property(nonatomic, copy) NSString *taskSignature;
@@ -579,11 +580,16 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
     self.taskCountLabel = CQLabel(@"", [NSFont monospacedDigitSystemFontOfSize:9.5 weight:NSFontWeightSemibold], CQTheme.overlay);
     self.taskCountLabel.alignment = NSTextAlignmentRight;
     [taskHeader addArrangedSubview:self.taskCountLabel];
+    self.markAllTasksViewedButton = CQQuietButton(@"全部已查看", @"checkmark", self, @selector(markAllTasksViewed:));
+    self.markAllTasksViewedButton.font = [NSFont systemFontOfSize:9.5 weight:NSFontWeightMedium];
+    self.markAllTasksViewedButton.toolTip = @"移除所有已完成提醒";
+    self.markAllTasksViewedButton.hidden = YES;
+    [taskHeader addArrangedSubview:self.markAllTasksViewedButton];
     [taskContent addArrangedSubview:taskHeader];
     self.taskStack = [NSStackView new];
     self.taskStack.orientation = NSUserInterfaceLayoutOrientationVertical;
     self.taskStack.alignment = NSLayoutAttributeLeading;
-    self.taskStack.spacing = 10;
+    self.taskStack.spacing = 4;
     [taskContent addArrangedSubview:self.taskStack];
     [NSLayoutConstraint activateConstraints:@[
         [taskContent.leadingAnchor constraintEqualToAnchor:self.taskPanel.leadingAnchor constant:11],
@@ -791,61 +797,26 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
 - (NSArray<CQCodexTask *> *)allTasksInSnapshot:(CQTaskSnapshot *)snapshot {
     NSMutableArray<CQCodexTask *> *tasks = [NSMutableArray array];
     [tasks addObjectsFromArray:snapshot.waitingForApprovalTasks ?: @[]];
-    [tasks addObjectsFromArray:snapshot.runningTasks ?: @[]];
     [tasks addObjectsFromArray:snapshot.unreadCompletedTasks ?: @[]];
+    [tasks addObjectsFromArray:snapshot.runningTasks ?: @[]];
     return tasks;
 }
 
-- (NSStackView *)taskGroupWithTitle:(NSString *)title
-                              state:(CQTaskState)state
-                              tasks:(NSArray<CQCodexTask *> *)tasks
-                    animationIndex:(NSUInteger *)animationIndex {
-    NSStackView *group = [NSStackView new];
-    group.orientation = NSUserInterfaceLayoutOrientationVertical;
-    group.alignment = NSLayoutAttributeLeading;
-    group.spacing = 4;
-
-    NSStackView *header = CQHorizontal();
-    header.spacing = 6;
-    NSImageView *icon = [NSImageView new];
-    NSImage *image = [NSImage imageWithSystemSymbolName:CQTaskSymbolName(state) accessibilityDescription:title];
-    image.template = YES;
-    icon.image = image;
-    icon.contentTintColor = CQTaskColor(state);
-    [icon.widthAnchor constraintEqualToConstant:11].active = YES;
-    [icon.heightAnchor constraintEqualToConstant:11].active = YES;
-    [header addArrangedSubview:icon];
-    [header addArrangedSubview:CQLabel(title, [NSFont systemFontOfSize:10 weight:NSFontWeightSemibold], CQTheme.subtext)];
-    [header addArrangedSubview:CQLabel([NSString stringWithFormat:@"%lu", (unsigned long)tasks.count],
-        [NSFont monospacedDigitSystemFontOfSize:9.5 weight:NSFontWeightSemibold], CQTheme.overlay)];
-    NSView *spacer = [NSView new];
-    [spacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
-    [header addArrangedSubview:spacer];
-    if (state == CQTaskStateCompletedUnread) {
-        NSButton *markAll = CQQuietButton(@"全部已查看", @"checkmark", self, @selector(markAllTasksViewed:));
-        markAll.font = [NSFont systemFontOfSize:9.5 weight:NSFontWeightMedium];
-        markAll.toolTip = @"移除所有已完成提醒";
-        [header addArrangedSubview:markAll];
-    }
-    [group addArrangedSubview:header];
-    [header.widthAnchor constraintEqualToAnchor:group.widthAnchor].active = YES;
-
+- (void)appendTaskRows:(NSArray<CQCodexTask *> *)tasks {
     for (NSUInteger index = 0; index < tasks.count; index++) {
         CQCodexTask *task = tasks[index];
         CQTaskRowButton *row = [[CQTaskRowButton alloc] initWithTask:task target:self action:@selector(taskSelected:)];
         self.taskRows[task.turnID] = row;
-        [group addArrangedSubview:row];
-        [row.widthAnchor constraintEqualToAnchor:group.widthAnchor].active = YES;
-        [row animateEntranceWithDelay:(*animationIndex) * 0.025];
-        (*animationIndex)++;
+        [self.taskStack addArrangedSubview:row];
+        [row.widthAnchor constraintEqualToAnchor:self.taskStack.widthAnchor].active = YES;
+        [row animateEntranceWithDelay:index * 0.025];
         if (index + 1 < tasks.count) {
             NSView *divider = CQDivider();
             divider.alphaValue = 0.58;
-            [group addArrangedSubview:divider];
-            [divider.widthAnchor constraintEqualToAnchor:group.widthAnchor constant:-28].active = YES;
+            [self.taskStack addArrangedSubview:divider];
+            [divider.widthAnchor constraintEqualToAnchor:self.taskStack.widthAnchor constant:-28].active = YES;
         }
     }
-    return group;
 }
 
 - (void)reconcileTaskSnapshot:(CQTaskSnapshot *)snapshot {
@@ -854,6 +825,7 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
     self.taskCountLabel.stringValue = snapshot.attentionCount > 0
         ? [NSString stringWithFormat:@"%lu 项需关注", (unsigned long)snapshot.attentionCount]
         : @"已清空";
+    self.markAllTasksViewedButton.hidden = snapshot.unreadCompletedTasks.count == 0;
     if ([signature isEqualToString:self.taskSignature]) {
         for (CQCodexTask *task in [self allTasksInSnapshot:snapshot]) {
             [self.taskRows[task.turnID] updateWithTask:task];
@@ -887,22 +859,7 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
         return;
     }
 
-    NSUInteger animationIndex = 0;
-    NSArray<NSDictionary *> *groups = @[
-        @{ @"title": @"待审核", @"state": @(CQTaskStateWaitingForApproval), @"tasks": snapshot.waitingForApprovalTasks ?: @[] },
-        @{ @"title": @"运行中", @"state": @(CQTaskStateRunning), @"tasks": snapshot.runningTasks ?: @[] },
-        @{ @"title": @"已完成 · 未查看", @"state": @(CQTaskStateCompletedUnread), @"tasks": snapshot.unreadCompletedTasks ?: @[] }
-    ];
-    for (NSDictionary *definition in groups) {
-        NSArray<CQCodexTask *> *tasks = definition[@"tasks"];
-        if (tasks.count == 0) continue;
-        NSStackView *group = [self taskGroupWithTitle:definition[@"title"]
-                                               state:[definition[@"state"] integerValue]
-                                               tasks:tasks
-                                     animationIndex:&animationIndex];
-        [self.taskStack addArrangedSubview:group];
-        [group.widthAnchor constraintEqualToAnchor:self.taskStack.widthAnchor].active = YES;
-    }
+    [self appendTaskRows:[self allTasksInSnapshot:snapshot]];
 }
 
 - (void)reconcileQuotaWindows:(NSArray<CQRateLimitWindow *> *)windows hasSnapshot:(BOOL)hasSnapshot {

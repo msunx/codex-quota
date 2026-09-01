@@ -42,10 +42,10 @@ Codex Quota 把经常散落在 Codex、终端和配置目录里的状态集中�
 
 ### 下载稳定版
 
-从 [GitHub Releases](https://github.com/msunx/codex-quota/releases/latest) 下载 `Codex-Quota-v0.2.7-macos-arm64.zip`，解压后将 **Codex Quota.app** 拖入 `/Applications`。
+从 [GitHub Releases](https://github.com/msunx/codex-quota/releases/latest) 下载 `Codex-Quota-v0.2.8-macos-arm64.zip`，解压后将 **Codex Quota.app** 拖入 `/Applications`。
 
 > [!NOTE]
-> 最新稳定版为 `v0.2.7`；当前 `main` 已包含新的任务看板、GLM 来源与界面优化。若要体验本文截图中的完整功能，请从源码构建 `main`。
+> 最新稳定版为 `v0.2.8`，包含任务动态看板、GLM 来源与新版暖灰界面。
 
 应用使用 ad-hoc 签名且未公证。首次打开如被 macOS 拦截，请前往“系统设置 → 隐私与安全性”确认打开。
 
@@ -143,7 +143,7 @@ DeepSeek 模式需要 Codex `0.144.0` 或更新版本。GLM 使用智谱提供�
 
 - macOS 14+，当前只构建 arm64 版本；
 - 需要 Codex App 或 Codex CLI；
-- 当前稳定版为 `0.2.7`，不支持多账号切换；
+- 当前稳定版为 `0.2.8`，不支持多账号切换；
 - 不包含应用自身自动更新、Mac App Store 分发、公证或内置 Codex；
 - 无来源元数据的本地 Skill 无法自动判断新版本；
 - 登录时启动默认关闭。

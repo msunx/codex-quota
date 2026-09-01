@@ -96,7 +96,7 @@ static NSString *CQClientString(id value) {
         @"clientInfo": @{
             @"name": @"codex-quota",
             @"title": @"Codex Quota",
-            @"version": @"0.2.7"
+            @"version": @"0.2.8"
         },
         @"capabilities": @{}
     };
