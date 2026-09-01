@@ -259,8 +259,8 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     completedTask.threadID = @"preview-completed";
     completedTask.turnID = @"preview-completed-turn";
     completedTask.title = @"修复 Markdown 文档预览";
-    completedTask.projectName = @"tjg";
-    completedTask.workingDirectory = [NSHomeDirectory() stringByAppendingPathComponent:@"Develop/tjg"];
+    completedTask.projectName = @"docs-site";
+    completedTask.workingDirectory = [NSHomeDirectory() stringByAppendingPathComponent:@"Develop/docs-site"];
     completedTask.state = CQTaskStateCompletedUnread;
     completedTask.startedAt = [NSDate dateWithTimeIntervalSinceNow:-14 * 60];
     completedTask.completedAt = [NSDate dateWithTimeIntervalSinceNow:-2 * 60];

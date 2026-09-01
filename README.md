@@ -1,44 +1,42 @@
 <p align="center">
-  <img src="./assets/readme/hero.svg" width="100%" alt="Codex Quota：在 macOS 菜单栏查看额度、切换模型来源并维护本机扩展">
+  <img src="./assets/readme/hero.svg" width="100%" alt="Codex Quota：在 macOS 菜单栏查看 Codex 任务与额度、切换模型并维护本机扩展">
 </p>
 
 <p align="center">
-  一个原生、轻量、本地优先的 macOS 菜单栏工具。
+  原生、轻量、本地优先的 macOS 菜单栏控制面。
 </p>
 
 <p align="center">
-  <code>v0.2.7</code>
   <code>macOS 14+</code>
   <code>Apple Silicon</code>
   <code>AppKit</code>
+  <code>Local-first</code>
 </p>
 
 <p align="center">
   <a href="#开始使用"><strong>开始使用</strong></a> ·
+  <a href="#任务与菜单栏信号"><strong>任务信号</strong></a> ·
   <a href="#模型来源"><strong>模型来源</strong></a> ·
   <a href="#扩展管理"><strong>扩展管理</strong></a> ·
   <a href="#数据与隐私"><strong>数据与隐私</strong></a>
 </p>
 
-## 先看实际界面
+## 一个入口，四类日常状态
 
 <p align="center">
-  <img src="./assets/readme/quota-panel.png" width="340" alt="Codex Quota 最新额度页，显示四个额度窗口、分段轨道、剩余重置次数与工作区额度">
-  &nbsp;&nbsp;
-  <img src="./assets/readme/extensions-panel.png" width="340" alt="Codex Quota 最新扩展管理页，显示 Skill 套件、来源、状态、更新、目录与卸载操作">
+  <img src="./assets/readme/task-panel.png" width="360" alt="Codex Quota 当前主看板预览，包含任务动态、额度、模型来源和底部操作区">
 </p>
 
 <p align="center">
-  <sub>当前 main 分支的 AppKit 预览 · 额度为模拟数据 · 扩展列表来自本机只读扫描</sub>
+  <sub>当前 main 分支的 AppKit 预览 · 任务与额度均为模拟数据</sub>
 </p>
 
-Codex Quota 把分散在命令行、配置文件和扩展目录里的高频操作，收进一个不占 Dock 位置的 360pt 菜单栏面板：
+Codex Quota 把经常散落在 Codex、终端和配置目录里的状态集中到一个 360pt 菜单栏面板：
 
-- **盯任务**：菜单栏显示最高优先级任务摘要；主看板只保留运行中、待审核和完成但尚未查看的任务。
-- **看额度**：同时展示 Codex 的全部额度窗口、重置时间、剩余重置次数和可选的工作区余额。
-- **切来源**：在 Codex 订阅、DeepSeek 与智谱 GLM 之间切换；GLM 支持 `glm-5.3-flash` 和 `glm-5.3`。
-- **保留历史入口**：由 Codex Quota 重启 Codex 后，可在本机列表中同时看到 `openai`、`deepseek`、`zhipu` 和旧版 `custom` provider 的对话入口。
-- **管扩展**：识别第三方与自建 Skill / 插件，检查版本、执行更新、定位目录，并完整卸载 Skill。
+- **盯任务**：菜单栏显示最高优先级任务摘要，主看板只保留待审核、运行中和完成但尚未查看的任务。
+- **看额度**：同时展示全部 Codex 额度窗口、重置时间、剩余重置次数和可选的工作区额度。
+- **切模型**：在 Codex 订阅、DeepSeek 与智谱 GLM 之间切换，同时保留原有配置的恢复路径。
+- **管扩展**：识别第三方与自建 Skill / 插件，检查版本、更新、定位目录并完整卸载 Skill。
 
 ## 开始使用
 
@@ -47,13 +45,13 @@ Codex Quota 把分散在命令行、配置文件和扩展目录里的高频操�
 从 [GitHub Releases](https://github.com/msunx/codex-quota/releases/latest) 下载 `Codex-Quota-v0.2.7-macos-arm64.zip`，解压后将 **Codex Quota.app** 拖入 `/Applications`。
 
 > [!NOTE]
-> Release 同时提供 SHA-256 校验文件；页面截图对应 `v0.2.7` 的暖灰玻璃界面。
+> 最新稳定版为 `v0.2.7`；当前 `main` 已包含新的任务看板、GLM 来源与界面优化。若要体验本文截图中的完整功能，请从源码构建 `main`。
 
 应用使用 ad-hoc 签名且未公证。首次打开如被 macOS 拦截，请前往“系统设置 → 隐私与安全性”确认打开。
 
 ### 从源码构建
 
-需要 macOS 14 或更新版本、Apple Silicon Mac，以及 Apple Command Line Tools：
+准备 macOS 14 或更新版本、Apple Silicon Mac，以及 Apple Command Line Tools：
 
 ```bash
 xcode-select --install
@@ -62,110 +60,93 @@ cd codex-quota
 ./scripts/build-app.sh
 ```
 
-构建结果位于 `dist/Codex Quota.app`。整个过程只使用 Apple Clang，不依赖完整 Xcode，也不要求升级到 macOS 26。
+构建结果位于 `dist/Codex Quota.app`。整个过程只使用 Apple Clang，不依赖完整 Xcode。
 
-应用会依次查找：
+应用会依次查找上次手动选择的 Codex、Codex App 内置 CLI、Homebrew 常见路径和当前 `PATH`；仍未找到时，可在面板底部手动选择可执行文件。
 
-1. 上次手动选择的 Codex；
-2. ChatGPT / Codex App 内置的 `codex`；
-3. Homebrew 常见路径；
-4. 当前 `PATH`。
+## 任务与菜单栏信号
 
-仍未找到时，可以在面板底部手动选择可执行文件。
+应用每秒只读校准本机 Codex turn 状态。菜单栏始终只显示优先级最高的一组摘要，避免多个任务同时占满菜单栏：
+
+| 信号 | 含义 | 行为 |
+| --- | --- | --- |
+| 🟠 `!` | 待审核 | 仅在获得明确审核等待信号时显示 |
+| 🟢 `✓` | 已完成、未查看 | Codex 切到前台后自动清除全部完成提醒 |
+| 🔵 `●` | 运行中 | 显示本机最新任务标题、项目和运行时间 |
+
+优先级固定为“待审核 → 未查看完成 → 运行中”。Codex 已在前台时完成的任务会直接视为已查看；手动点击任务或“全部已查看”仍可作为兜底。
+
+> [!IMPORTANT]
+> 独立菜单栏应用无法读取 Codex Desktop 私有进程中的全部运行时信息。无法确认任务是否正在等待审核时，会保守显示为“运行中”，不会根据持续时间猜测。
 
 ## 模型来源
 
-### Codex 订阅
+| 来源 | 凭据 | 可见状态 | 可选模型 |
+| --- | --- | --- | --- |
+| Codex 订阅 | 复用本机现有登录 | 额度窗口、重置时间、任务状态 | 当前 Codex 配置 |
+| DeepSeek | DeepSeek API Key | 官方余额 | `deepseek-v4-flash`、`deepseek-v4-pro` |
+| 智谱 GLM | 智谱 API Key | 配置状态 | `glm-5.3-flash`、`glm-5.3` |
 
-无需额外填写凭据。应用通过本机 `codex app-server --stdio` 复用现有登录状态，读取账号与额度窗口；额度事件实时更新，并每 30 秒校准一次。
+切换外部来源时，应用会先备份 `~/.codex/config.toml` 和已有的 `models.json`，再写入新配置；切回 Codex 订阅时恢复备份。API Key 按 Codex 接入要求写入配置，并使用独立服务项额外保存在 macOS 钥匙串中。
 
-### 任务动态
+第一次切换外部来源：
 
-应用每秒只读校准本机 Codex turn 状态。菜单栏只显示当前最高优先级摘要：待审核为橙色 `!`、未查看完成为绿色 `✓`、运行中为蓝色 `●`；主看板展示对应任务标题、项目和时间。
-
-打开面板不会自动清除完成提醒。Codex 切到前台时，所有已完成任务会自动标记为已查看；若任务在 Codex 已位于前台时完成，也会直接视为已查看。点击已完成任务或“全部已查看”仍可手动清除，状态跨启动保存并在 7 天后自动清理。由于独立菜单栏应用无法读取 Codex Desktop 私有进程里的 `waitingOnApproval` 标记，只有得到明确运行时信号时才会显示“待审核”；无法确认时会保守显示为“运行中”。
-
-### DeepSeek
-
-DeepSeek 模式需要 Codex `0.144.0` 或更新版本。第一次切换时：
-
-1. 选择面板顶部的 **DeepSeek**；
-2. 输入或使用 `⌘V` 粘贴 API Key；
-3. 选择 `deepseek-v4-flash` 或 `deepseek-v4-pro`；
+1. 在面板顶部选择 **DeepSeek** 或 **GLM**；
+2. 输入或使用 `⌘V` 粘贴对应 API Key；
+3. 选择模型；
 4. 配置成功后选择 **立即重启**。
 
-切换前，应用会备份 `~/.codex/config.toml` 和已有的 `models.json`；切回 Codex 订阅时恢复原配置。
-API Key 按 Codex 接入要求写入配置，并额外保存在 macOS 钥匙串中。
+DeepSeek 模式需要 Codex `0.144.0` 或更新版本。GLM 使用智谱提供的 OpenAI Responses 端点 `https://open.bigmodel.cn/api/v1`。
 
-### 智谱 GLM
-
-GLM 模式通过智谱为 Codex 提供的 OpenAI Responses 端点接入。第一次切换时：
-
-1. 选择面板顶部的 **GLM**；
-2. 输入或使用 `⌘V` 粘贴智谱 API Key；
-3. 选择 `glm-5.3-flash` 或 `glm-5.3`；
-4. 配置成功后选择 **立即重启**。
-
-GLM API Key 使用独立的 macOS 钥匙串项保存。模型配置采用 `https://open.bigmodel.cn/api/v1`、Responses 协议和 1M 上下文；切回 Codex 订阅时同样恢复切换前的原始配置。
-
-> [!IMPORTANT]
-> 本机历史兼容桥只注入由 Codex Quota 发起的新 Codex 进程。若完全退出后从 Dock 手动打开 Codex，可能绕过兼容桥；
-> 重新切换一次来源并选择“立即重启”即可恢复统一入口，不会删除对话。
+> [!NOTE]
+> 本机历史兼容桥只注入由 Codex Quota 发起的新 Codex 进程。若完全退出后从 Dock 手动打开 Codex，可能绕过兼容桥；重新切换一次来源并选择“立即重启”即可恢复统一入口，不会删除对话。
 
 ## 扩展管理
 
-扩展页只展示第三方和自建扩展，过滤 `system` scope、Codex 内置市场以及插件随附的重复 Skill。
-每个条目都保留来源、作用域、用途与状态；长说明单行截断，悬停时显示全文。
+扩展页只展示第三方与自建扩展，过滤系统内置项和插件随附的重复 Skill。每个条目保留来源、作用域、用途与版本状态。
 
 | 来源 | 版本依据 | 可执行操作 |
 | --- | --- | --- |
-| GitHub Skill | 安装锁中的上游地址与 Git tree 哈希 | 检查、更新、打开目录、卸载 |
+| GitHub Skill | 安装记录中的上游地址与 Git tree 哈希 | 检查、更新、打开目录、卸载 |
 | Well-known Skill | 上游 `SKILL.md` 校验结果 | 检查、更新、打开目录、卸载 |
 | 自建 / 无来源 Skill | 标记为“本地维护”，不猜测版本 | 打开目录、卸载 |
-| 飞书官方 Skills | 将全部 `lark-*` 聚合为“飞书 CLI Skills” | 整组检查、更新、定位、卸载 |
 | Codex 插件 | App Server 返回的本地与市场版本 | 检查、更新 |
+| CLI Skill 套件 | 对应 CLI 的官方更新机制 | 整组检查、更新、定位、卸载 |
 
-应用每 6 小时在后台检查一次，也可以手动触发。只有确认存在新版本的条目才会启用“更新”：
-
-- 独立 Skill 通过 `npx skills` 更新；
-- Codex 插件通过 App Server 更新；
-- 飞书套件通过 `lark-cli update` 整组更新。
-
-卸载只对 Skill 开放。应用会删除全部已发现的安装目录，并同步清理 `~/.agents/.skill-lock.json` 中对应记录；
-执行前会明确提示范围，失败时保留具体原因。飞书套件卸载会移除整组 Skills，但不会删除 `lark-cli`。
-
-> [!NOTE]
-> 扩展管理依赖 Codex App Server 的 `skills/list`、`plugin/list` 和 `plugin/install`。旧版 Codex 不支持插件接口时，Skill 仍会正常显示，插件错误会单独呈现。
+应用每 6 小时在后台检查一次，也可以手动触发。只有确认存在新版本的条目才会启用“更新”。卸载 Skill 前会明确提示范围；执行后同步清理已发现的安装目录和对应安装记录，失败时保留具体原因。
 
 ## 它如何工作
 
 <p align="center">
-  <img src="./assets/readme/architecture.svg" width="100%" alt="Codex App Server、DeepSeek API 和本机扩展来源进入 Codex Quota，再驱动菜单栏状态、Codex 配置与扩展维护">
+  <img src="./assets/readme/architecture.svg" width="100%" alt="Codex Quota 本地架构：读取 Codex 额度与任务索引，管理模型配置和扩展，再输出到菜单栏与 Codex Desktop">
 </p>
 
-- **额度状态**：App Server 事件为主、30 秒轮询为辅；瞬时失败按 2、5、15、30、60 秒退避，打开面板、网络恢复或系统唤醒时立即刷新。
-- **任务状态**：只读查询本机会话索引与 turn 状态，每秒校准；未查看记录仅保存在应用偏好中，不修改 Codex 会话数据库。
+- **额度状态**：App Server 事件为主、30 秒轮询为辅；打开面板、网络恢复或系统唤醒时立即刷新。
+- **任务状态**：只读查询本机会话索引与 turn 状态数据库，每秒校准；已查看记录只保存在应用偏好中。
 - **模型配置**：只在用户主动切换时备份、写入或恢复配置，并询问是否重启 Codex。
-- **历史兼容桥**：仅在 `thread/list` 没有显式 provider 条件时补充本机 provider 过滤，不读取或改写会话内容。
+- **历史兼容桥**：仅为 `thread/list` 补充本机 provider 过滤，不读取或改写会话内容。
 - **扩展维护**：只读扫描来源与版本；更新、打开目录和卸载都由用户明确触发。
 
 ## 数据与隐私
 
-- Codex 模式只与本机 App Server 通信，不读取 `~/.codex/auth.json`，不保存登录 URL 或认证令牌。
-- 任务动态只读取线程标题、工作目录、turn 标识、状态和时间，不读取消息正文，也不会写入 Codex SQLite 数据库。
-- DeepSeek 余额只请求官方 `/user/balance`；DeepSeek 与 GLM API Key 均不写日志、不在界面回显。
-- 历史兼容桥不读取对话正文，不修改 SQLite 会话库或 JSONL 内容。
-- 扩展检查只按安装来源访问 GitHub、Well-known Skill 站点、npm、飞书 CLI 或 Codex 插件市场。
-- 配置切换、扩展更新与 Skill 卸载都需要用户主动操作。
+> [!TIP]
+> Codex Quota 不需要单独保存 Codex 登录令牌，也不会读取或上传对话正文。
+
+- 不读取 `~/.codex/auth.json`，不保存登录 URL、认证令牌或完整服务响应。
+- 任务动态只读取线程标题、工作目录、turn 标识、状态和时间，不修改 Codex SQLite 数据库。
+- DeepSeek 余额只请求官方 `/user/balance`；DeepSeek 与 GLM API Key 不写日志、不在界面回显。
+- 历史兼容桥不修改 SQLite 会话库或 JSONL 内容。
+- 扩展检查只按安装来源访问对应上游，不上传本机 Skill 内容。
+- 配置切换、扩展更新、Skill 卸载和登录时启动都需要用户主动操作。
 
 ## 兼容性与限制
 
-- macOS 14+，仅构建 arm64 版本；
-- 需要 ChatGPT App 或 Codex CLI；
-- 当前版本为 `0.2.7`，不支持多账号切换；
+- macOS 14+，当前只构建 arm64 版本；
+- 需要 Codex App 或 Codex CLI；
+- 当前稳定版为 `0.2.7`，不支持多账号切换；
 - 不包含应用自身自动更新、Mac App Store 分发、公证或内置 Codex；
 - 无来源元数据的本地 Skill 无法自动判断新版本；
-- 登录时启动由用户主动开启，默认关闭。
+- 登录时启动默认关闭。
 
 ## 常见问题
 
@@ -191,7 +172,7 @@ GLM API Key 使用独立的 macOS 钥匙串项保存。模型配置采用 `https
 </details>
 
 <details>
-<summary><strong>全屏时为什么看不到额度？</strong></summary>
+<summary><strong>全屏时为什么看不到菜单栏状态？</strong></summary>
 
 macOS 全屏模式可能隐藏整条菜单栏。将鼠标移到屏幕顶部，或在系统设置中关闭菜单栏自动隐藏。
 
@@ -200,7 +181,7 @@ macOS 全屏模式可能隐藏整条菜单栏。将鼠标移到屏幕顶部，�
 ## 开发
 
 ```text
-Sources/CodexQuota/    AppKit 界面、额度、配置与扩展管理
+Sources/CodexQuota/    AppKit 界面、额度、任务状态、配置与扩展管理
 Sources/HistoryBridge/ 本机历史列表兼容桥
 Resources/             App Bundle 配置
 scripts/               构建与图标生成脚本

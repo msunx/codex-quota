@@ -1,103 +1,98 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="440" viewBox="0 0 1200 440" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400" role="img" aria-labelledby="title desc">
   <title id="title">Codex Quota</title>
-  <desc id="desc">一个原生 macOS 菜单栏工具，用于查看 Codex 与 DeepSeek 额度、切换模型来源并维护第三方 Skill 和插件。</desc>
+  <desc id="desc">Codex Quota 是一个原生 macOS 菜单栏控制面，用于查看 Codex 任务与额度、切换模型来源并维护本机扩展。</desc>
 
-  <rect width="1200" height="440" rx="30" fill="#F2F2F0"/>
-  <rect x="1" y="1" width="1198" height="438" rx="29" fill="none" stroke="#D8D8D4" stroke-width="2"/>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FAFAF8"/>
+      <stop offset="1" stop-color="#ECECEF"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="400" rx="30" fill="url(#background)"/>
+  <rect x="1" y="1" width="1198" height="398" rx="29" fill="none" stroke="#D8D8D4" stroke-width="2"/>
 
   <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif">
-    <g transform="translate(62 52)">
+    <g transform="translate(58 46)">
       <circle cx="7" cy="7" r="7" fill="#2F7DF6"/>
-      <text x="28" y="14" fill="#66676D" font-size="18" font-weight="700" letter-spacing="2.2">NATIVE MACOS MENU BAR UTILITY</text>
+      <text x="28" y="14" fill="#66676D" font-size="18" font-weight="720" letter-spacing="1.8">NATIVE APPKIT · LOCAL FIRST</text>
 
-      <text x="0" y="112" fill="#18181A" font-size="72" font-weight="760">Codex Quota</text>
-      <text x="0" y="168" fill="#18181A" font-size="30" font-weight="700">额度、模型与扩展，</text>
-      <text x="0" y="208" fill="#18181A" font-size="30" font-weight="700">都留在菜单栏。</text>
+      <text x="0" y="102" fill="#18181A" font-size="72" font-weight="780">Codex Quota</text>
+      <text x="0" y="152" fill="#18181A" font-size="28" font-weight="720">任务、额度、模型与扩展，</text>
+      <text x="0" y="190" fill="#18181A" font-size="28" font-weight="720">收进一个菜单栏控制面。</text>
 
-      <text x="0" y="264" fill="#66676D" font-size="20">Codex 订阅额度 · DeepSeek 余额 · 本机历史入口</text>
-      <text x="0" y="296" fill="#66676D" font-size="20">第三方 Skill / 插件 · 版本检查 · 更新与卸载</text>
+      <g transform="translate(0 230)" font-size="18" font-weight="680">
+        <circle cx="7" cy="7" r="7" fill="#D97706"/>
+        <text x="24" y="14" fill="#66676D">待审核</text>
+        <circle cx="115" cy="7" r="7" fill="#2F7DF6"/>
+        <text x="132" y="14" fill="#66676D">运行中</text>
+        <circle cx="223" cy="7" r="7" fill="#34A853"/>
+        <text x="240" y="14" fill="#66676D">已完成</text>
+      </g>
 
-      <g transform="translate(0 332)" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="650">
-        <rect width="104" height="36" rx="18" fill="#FFFFFF" stroke="#D8D8D4"/>
-        <text x="52" y="23" text-anchor="middle" fill="#18181A">v0.2.7</text>
-        <rect x="116" width="132" height="36" rx="18" fill="#FFFFFF" stroke="#D8D8D4"/>
-        <text x="182" y="23" text-anchor="middle" fill="#18181A">macOS 14+</text>
-        <rect x="260" width="170" height="36" rx="18" fill="#FFFFFF" stroke="#D8D8D4"/>
-        <text x="345" y="23" text-anchor="middle" fill="#18181A">APPLE SILICON</text>
+      <g transform="translate(0 282)" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="650">
+        <rect width="132" height="38" rx="19" fill="#FFFFFF" stroke="#D8D8D4"/>
+        <text x="66" y="25" text-anchor="middle" fill="#18181A">macOS 14+</text>
+        <rect x="144" width="172" height="38" rx="19" fill="#FFFFFF" stroke="#D8D8D4"/>
+        <text x="230" y="25" text-anchor="middle" fill="#18181A">APPLE SILICON</text>
+        <rect x="328" width="104" height="38" rx="19" fill="#18181A"/>
+        <text x="380" y="25" text-anchor="middle" fill="#FFFFFF">APPKIT</text>
       </g>
     </g>
 
-    <g transform="translate(742 30)">
-      <rect x="62" width="334" height="44" rx="22" fill="#FFFFFF" stroke="#D8D8D4"/>
-      <circle cx="88" cy="22" r="6" fill="#E11D48"/>
-      <text x="106" y="29" fill="#18181A" font-size="18" font-weight="700">Codex</text>
-      <text x="250" y="29" fill="#92939A" font-size="18">剩余</text>
-      <text x="376" y="30" text-anchor="end" fill="#E11D48" font-size="22" font-weight="760">12%</text>
+    <g transform="translate(704 22)">
+      <rect x="76" width="372" height="44" rx="22" fill="#FFFFFF" stroke="#D8D8D4"/>
+      <text x="100" y="29" fill="#18181A" font-size="18" font-weight="720">Codex</text>
+      <text x="300" y="29" fill="#18181A" font-size="18" font-weight="680">74%</text>
+      <text x="361" y="29" fill="#D97706" font-size="18" font-weight="760">· !1</text>
+      <circle cx="424" cy="22" r="6" fill="#2F7DF6"/>
 
-      <rect x="0" y="60" width="458" height="334" rx="24" fill="#FAFAF8" stroke="#D8D8D4" stroke-width="2"/>
+      <rect x="0" y="60" width="496" height="318" rx="25" fill="#FAFAF8" stroke="#D8D8D4" stroke-width="2"/>
+      <text x="24" y="99" fill="#18181A" font-size="26" font-weight="760">Codex Quota</text>
+      <circle cx="391" cy="90" r="5" fill="#2F7DF6"/>
+      <text x="406" y="97" fill="#2F7DF6" font-size="17" font-weight="720">已连接</text>
 
-      <text x="24" y="98" fill="#18181A" font-size="25" font-weight="750">Codex Quota</text>
-      <circle cx="351" cy="89" r="5" fill="#2F7DF6"/>
-      <text x="366" y="96" fill="#2F7DF6" font-size="17" font-weight="700">已连接</text>
-
-      <rect x="24" y="116" width="410" height="42" rx="11" fill="#E8E8EA"/>
-      <rect x="26" y="118" width="202" height="38" rx="10" fill="#FFFFFF"/>
-      <text x="127" y="144" text-anchor="middle" fill="#18181A" font-size="18" font-weight="700">Codex 订阅</text>
-      <text x="331" y="144" text-anchor="middle" fill="#66676D" font-size="18" font-weight="650">DeepSeek</text>
-
-      <rect x="24" y="174" width="410" height="168" rx="18" fill="#FFFFFF" stroke="#E5E5E2"/>
-      <text x="42" y="204" fill="#66676D" font-size="18" font-weight="700">可用额度</text>
-      <text x="416" y="204" text-anchor="end" fill="#92939A" font-size="18" font-weight="650">剩余</text>
-
-      <g transform="translate(42 224)">
-        <circle cx="5" cy="5" r="5" fill="#2F7DF6"/>
-        <text x="20" y="11" fill="#18181A" font-size="18" font-weight="700">Codex · 5 小时</text>
-        <text x="374" y="12" text-anchor="end" fill="#2F7DF6" font-size="21" font-weight="760">74%</text>
-        <g transform="translate(0 24)">
-          <rect width="20" height="8" rx="4" fill="#79A8FA"/>
-          <rect x="24" width="20" height="8" rx="4" fill="#6C9FF9"/>
-          <rect x="48" width="20" height="8" rx="4" fill="#5D95F8"/>
-          <rect x="72" width="20" height="8" rx="4" fill="#4F8BF7"/>
-          <rect x="96" width="20" height="8" rx="4" fill="#4182F6"/>
-          <rect x="120" width="20" height="8" rx="4" fill="#3378F4"/>
-          <rect x="144" width="20" height="8" rx="4" fill="#2F7DF6"/>
-          <rect x="168" width="20" height="8" rx="4" fill="#2F7DF6"/>
-          <rect x="192" width="20" height="8" rx="4" fill="#2F7DF6"/>
-          <rect x="216" width="20" height="8" rx="4" fill="#2F7DF6"/>
-          <rect x="240" width="20" height="8" rx="4" fill="#2F7DF6"/>
-          <rect x="264" width="20" height="8" rx="4" fill="#2F7DF6"/>
-          <rect x="288" width="20" height="8" rx="4" fill="#ECECEE"/>
-          <rect x="312" width="20" height="8" rx="4" fill="#ECECEE"/>
-          <rect x="336" width="20" height="8" rx="4" fill="#ECECEE"/>
-        </g>
+      <g transform="translate(24 116)" font-size="17" font-weight="680">
+        <rect width="448" height="38" rx="10" fill="#E8E8EA"/>
+        <rect x="2" y="2" width="146" height="34" rx="9" fill="#FFFFFF"/>
+        <text x="75" y="25" text-anchor="middle" fill="#18181A">Codex 订阅</text>
+        <text x="224" y="25" text-anchor="middle" fill="#66676D">DeepSeek</text>
+        <text x="374" y="25" text-anchor="middle" fill="#66676D">GLM</text>
       </g>
 
-      <g transform="translate(42 279)">
-        <circle cx="5" cy="5" r="5" fill="#E11D48"/>
-        <text x="20" y="11" fill="#18181A" font-size="18" font-weight="700">Reserve · 7 天</text>
-        <text x="374" y="12" text-anchor="end" fill="#E11D48" font-size="21" font-weight="760">12%</text>
-        <g transform="translate(0 24)">
-          <rect width="20" height="8" rx="4" fill="#F05072"/>
-          <rect x="24" width="20" height="8" rx="4" fill="#E11D48"/>
-          <rect x="48" width="20" height="8" rx="4" fill="#ECECEE"/>
-          <rect x="72" width="20" height="8" rx="4" fill="#ECECEE"/>
-          <rect x="96" width="20" height="8" rx="4" fill="#ECECEE"/>
-          <rect x="120" width="20" height="8" rx="4" fill="#ECECEE"/>
-          <rect x="144" width="20" height="8" rx="4" fill="#ECECEE"/>
-          <rect x="168" width="20" height="8" rx="4" fill="#ECECEE"/>
-          <rect x="192" width="20" height="8" rx="4" fill="#ECECEE"/>
-          <rect x="216" width="20" height="8" rx="4" fill="#ECECEE"/>
-          <rect x="240" width="20" height="8" rx="4" fill="#ECECEE"/>
-          <rect x="264" width="20" height="8" rx="4" fill="#ECECEE"/>
-          <rect x="288" width="20" height="8" rx="4" fill="#ECECEE"/>
-          <rect x="312" width="20" height="8" rx="4" fill="#ECECEE"/>
-          <rect x="336" width="20" height="8" rx="4" fill="#ECECEE"/>
-        </g>
+      <g transform="translate(24 170)">
+        <rect width="448" height="132" rx="17" fill="#FFFFFF" stroke="#E4E4E0"/>
+        <text x="18" y="29" fill="#18181A" font-size="18" font-weight="740">任务动态</text>
+        <text x="430" y="29" text-anchor="end" fill="#92939A" font-size="16">3 项需关注</text>
+
+        <circle cx="24" cy="54" r="6" fill="#D97706"/>
+        <text x="42" y="60" fill="#18181A" font-size="17" font-weight="680">确认发布方案</text>
+        <text x="428" y="60" text-anchor="end" fill="#D97706" font-size="16" font-weight="720">待审核</text>
+
+        <circle cx="24" cy="83" r="6" fill="#2F7DF6"/>
+        <text x="42" y="89" fill="#18181A" font-size="17" font-weight="680">重新设计任务状态看板</text>
+        <text x="428" y="89" text-anchor="end" fill="#2F7DF6" font-size="16" font-weight="720">运行中</text>
+
+        <circle cx="24" cy="112" r="6" fill="#34A853"/>
+        <text x="42" y="118" fill="#18181A" font-size="17" font-weight="680">修复 Markdown 预览</text>
+        <text x="428" y="118" text-anchor="end" fill="#34A853" font-size="16" font-weight="720">已完成</text>
       </g>
 
-      <text x="24" y="374" fill="#92939A" font-size="17">实时事件 + 30 秒校准</text>
-      <rect x="330" y="351" width="104" height="30" rx="10" fill="#18181A"/>
-      <text x="382" y="372" text-anchor="middle" fill="#FFFFFF" font-size="17" font-weight="700">刷新</text>
+      <g transform="translate(24 316)">
+        <circle cx="6" cy="7" r="6" fill="#2F7DF6"/>
+        <text x="22" y="14" fill="#18181A" font-size="17" font-weight="680">5 小时额度</text>
+        <g transform="translate(135 1)">
+          <rect width="23" height="12" rx="6" fill="#79A8FA"/>
+          <rect x="29" width="23" height="12" rx="6" fill="#5D95F8"/>
+          <rect x="58" width="23" height="12" rx="6" fill="#4182F6"/>
+          <rect x="87" width="23" height="12" rx="6" fill="#2F7DF6"/>
+          <rect x="116" width="23" height="12" rx="6" fill="#2F7DF6"/>
+          <rect x="145" width="23" height="12" rx="6" fill="#2F7DF6"/>
+          <rect x="174" width="23" height="12" rx="6" fill="#E8E8EA"/>
+          <rect x="203" width="23" height="12" rx="6" fill="#E8E8EA"/>
+        </g>
+        <text x="448" y="15" text-anchor="end" fill="#2F7DF6" font-size="20" font-weight="760">74%</text>
+      </g>
     </g>
   </g>
 </svg>
