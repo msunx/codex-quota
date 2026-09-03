@@ -9,6 +9,7 @@
 #import "CQExtensions.h"
 #import "CQPopoverController.h"
 #import "CQTaskMonitor.h"
+#import "CQTaskNotificationController.h"
 #import "CQTheme.h"
 
 static NSString * const CQSavedCodexPathKey = @"CodexExecutablePath";
@@ -61,6 +62,7 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
 @property(nonatomic, strong) CQCodexConfigManager *configManager;
 @property(nonatomic, strong) CQDeepSeekClient *deepSeekClient;
 @property(nonatomic, strong) CQTaskMonitor *taskMonitor;
+@property(nonatomic, strong) CQTaskNotificationController *taskNotificationController;
 @property(nonatomic, strong) CQTaskSnapshot *taskSnapshot;
 @property(nonatomic, strong, nullable) CQQuotaSnapshot *snapshot;
 @property(nonatomic, strong, nullable) CQDeepSeekBalance *deepSeekBalance;
@@ -138,10 +140,16 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     [self configureMenuBar];
     [self configurePanel];
     [self configureSystemObservers];
+    self.taskNotificationController = [CQTaskNotificationController new];
+    __weak typeof(self) weakSelf = self;
+    self.taskNotificationController.taskSelectedHandler = ^(CQCodexTask *task) {
+        [weakSelf focusCodexTask:task];
+    };
+    [self.taskNotificationController start];
     self.taskSnapshot = [CQTaskSnapshot emptySnapshot];
     self.taskMonitor = [CQTaskMonitor new];
-    __weak typeof(self) weakSelf = self;
     self.taskMonitor.snapshotDidUpdate = ^(CQTaskSnapshot *taskSnapshot) {
+        [weakSelf.taskNotificationController handleSnapshot:taskSnapshot];
         weakSelf.taskSnapshot = taskSnapshot;
         if (taskSnapshot.unreadCompletedTasks.count > 0 && [weakSelf isCodexFrontmost]) {
             [weakSelf.taskMonitor markAllCompletedViewed];

@@ -46,6 +46,7 @@ fi
     -framework Network \
     -framework Security \
     -framework ServiceManagement \
+    -framework UserNotifications \
     -lsqlite3 \
     -o "$MACOS_PATH/CodexQuota"
 
