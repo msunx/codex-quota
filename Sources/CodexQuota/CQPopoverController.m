@@ -2,7 +2,7 @@
 #import "CQTheme.h"
 #import <QuartzCore/QuartzCore.h>
 
-static CGFloat const CQMainPanelMinimumHeight = 390.0;
+static CGFloat const CQMainPanelMinimumHeight = 340.0;
 
 @interface CQProgressView : NSView
 @property(nonatomic) double progress;
@@ -10,124 +10,62 @@ static CGFloat const CQMainPanelMinimumHeight = 390.0;
 @end
 
 @implementation CQProgressView {
-    CAShapeLayer *_trackLayer;
-    CAShapeLayer *_glowLayer;
-    CALayer *_revealLayer;
-    CAGradientLayer *_fillLayer;
-    CAShapeLayer *_segmentMask;
+    CALayer *_fillLayer;
 }
-- (BOOL)isFlipped { return YES; }
+
 - (instancetype)init {
-    self = [super initWithFrame:NSMakeRect(0, 0, 100, 8)];
+    self = [super initWithFrame:NSMakeRect(0, 0, 100, 4)];
     if (self) {
         self.wantsLayer = YES;
-        _trackLayer = [CAShapeLayer layer];
-        _trackLayer.fillColor = [CQTheme.surface colorWithAlphaComponent:0.88].CGColor;
-        [self.layer addSublayer:_trackLayer];
-
-        _glowLayer = [CAShapeLayer layer];
-        _glowLayer.shadowOffset = CGSizeZero;
-        _glowLayer.shadowRadius = 2.25;
-        [self.layer addSublayer:_glowLayer];
-
-        _revealLayer = [CALayer layer];
-        _revealLayer.anchorPoint = CGPointMake(0, 0.5);
-        _revealLayer.masksToBounds = YES;
-        [self.layer addSublayer:_revealLayer];
-
-        _fillLayer = [CAGradientLayer layer];
-        _fillLayer.startPoint = CGPointMake(0, 0.5);
-        _fillLayer.endPoint = CGPointMake(1, 0.5);
-        [_revealLayer addSublayer:_fillLayer];
-        _segmentMask = [CAShapeLayer layer];
-        _segmentMask.fillColor = NSColor.whiteColor.CGColor;
-        _fillLayer.mask = _segmentMask;
-        [self.heightAnchor constraintEqualToConstant:8].active = YES;
+        self.layer.backgroundColor = CQTheme.surface.CGColor;
+        self.layer.cornerRadius = 2;
+        self.layer.masksToBounds = YES;
+        _fillLayer = [CALayer layer];
+        _fillLayer.anchorPoint = CGPointMake(0, 0.5);
+        _fillLayer.cornerRadius = 2;
+        [self.layer addSublayer:_fillLayer];
+        [self.heightAnchor constraintEqualToConstant:4].active = YES;
+        self.accessibilityElement = YES;
+        self.accessibilityRole = NSAccessibilityProgressIndicatorRole;
     }
     return self;
 }
 
-- (CGFloat)revealWidthForProgress:(double)progress {
-    static NSInteger const segmentCount = 18;
-    static CGFloat const gap = 3.0;
-    CGFloat width = self.bounds.size.width;
-    if (width <= 0) return 0;
-    CGFloat segmentWidth = (width - gap * (segmentCount - 1)) / segmentCount;
-    NSInteger filledSegments = (NSInteger)llround(MAX(0, MIN(1, progress)) * segmentCount);
-    if (filledSegments <= 0) return 0;
-    return filledSegments * segmentWidth + (filledSegments - 1) * gap;
-}
-
 - (void)layout {
     [super layout];
-    static NSInteger const segmentCount = 18;
-    static CGFloat const gap = 3.0;
-    CGFloat width = self.bounds.size.width;
-    CGFloat height = self.bounds.size.height;
-    CGFloat segmentWidth = MAX(1, (width - gap * (segmentCount - 1)) / segmentCount);
-    NSInteger filledSegments = (NSInteger)llround(MAX(0, MIN(1, self.progress)) * segmentCount);
-    CGMutablePathRef path = CGPathCreateMutable();
-    CGMutablePathRef glowPath = CGPathCreateMutable();
-    for (NSInteger index = 0; index < segmentCount; index++) {
-        CGRect rect = CGRectMake(index * (segmentWidth + gap), 0, segmentWidth, height);
-        CGPathAddRoundedRect(path, NULL, rect, 2.75, 2.75);
-        if (index < filledSegments) CGPathAddRoundedRect(glowPath, NULL, rect, 2.75, 2.75);
-    }
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    _trackLayer.frame = self.bounds;
-    _trackLayer.path = path;
-    _glowLayer.frame = self.bounds;
-    _glowLayer.path = glowPath;
-    _glowLayer.shadowPath = glowPath;
-    _revealLayer.position = CGPointMake(0, height / 2.0);
-    _revealLayer.bounds = CGRectMake(0, 0, [self revealWidthForProgress:self.progress], height);
-    _fillLayer.frame = self.bounds;
-    _segmentMask.frame = self.bounds;
-    _segmentMask.path = path;
+    _fillLayer.position = CGPointMake(0, NSHeight(self.bounds) / 2);
+    _fillLayer.bounds = CGRectMake(0, 0, NSWidth(self.bounds) * self.progress, NSHeight(self.bounds));
     [CATransaction commit];
-    CGPathRelease(path);
-    CGPathRelease(glowPath);
 }
+
 - (void)setProgress:(double)progress color:(NSColor *)color animated:(BOOL)animated {
     progress = MAX(0, MIN(1, progress));
-    NSColor *gradientStart = [color blendedColorWithFraction:0.42 ofColor:NSColor.whiteColor];
-    NSColor *gradientEnd = [color blendedColorWithFraction:0.12 ofColor:NSColor.blackColor];
-    _fillLayer.colors = @[(id)gradientStart.CGColor, (id)color.CGColor, (id)gradientEnd.CGColor];
-    _fillLayer.locations = @[@0, @0.58, @1];
-    _fillLayer.endPoint = CGPointMake(MAX(progress, 0.01), 0.5);
-    BOOL increaseContrast = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldIncreaseContrast;
+    CGFloat previousWidth = (_fillLayer.presentationLayer ?: _fillLayer).bounds.size.width;
+    BOOL changed = fabs(self.progress - progress) > 0.0001;
+    self.progress = progress;
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    _glowLayer.fillColor = [color colorWithAlphaComponent:increaseContrast ? 0.10 : 0.24].CGColor;
-    _glowLayer.shadowColor = color.CGColor;
-    _glowLayer.shadowOpacity = progress > 0 ? (increaseContrast ? 0.20 : 0.56) : 0;
+    _fillLayer.backgroundColor = color.CGColor;
     [CATransaction commit];
-    self.progress = progress;
     [self setNeedsLayout:YES];
     [self layoutSubtreeIfNeeded];
-    CGFloat width = [self revealWidthForProgress:progress];
-    BOOL reduceMotion = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceMotion;
-    if (animated && !reduceMotion && self.window) {
+    if (changed && animated && self.window && !NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceMotion) {
         CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"bounds.size.width"];
-        CALayer *presentation = (CALayer *)_revealLayer.presentationLayer;
-        animation.fromValue = @(presentation ? presentation.bounds.size.width : _revealLayer.bounds.size.width);
-        animation.toValue = @(width);
+        animation.fromValue = @(previousWidth);
+        animation.toValue = @(NSWidth(self.bounds) * progress);
         animation.duration = 0.24;
-        animation.timingFunction = [CAMediaTimingFunction functionWithControlPoints:0.77 :0 :0.175 :1];
-        [_revealLayer addAnimation:animation forKey:@"quota"];
+        animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [_fillLayer addAnimation:animation forKey:@"quota"];
     }
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-    _revealLayer.bounds = CGRectMake(0, 0, width, self.bounds.size.height);
-    [CATransaction commit];
 }
 @end
 
 static NSView *CQDivider(void) {
     NSView *view = [NSView new];
     view.wantsLayer = YES;
-    view.layer.backgroundColor = [CQTheme.overlay colorWithAlphaComponent:0.20].CGColor;
+    view.layer.backgroundColor = (NSWorkspace.sharedWorkspace.accessibilityDisplayShouldIncreaseContrast ? CQTheme.overlay : CQTheme.surface).CGColor;
     [view.heightAnchor constraintEqualToConstant:1].active = YES;
     return view;
 }
@@ -151,7 +89,6 @@ static NSStackView *CQHorizontal(void) {
 @property(nonatomic, strong) NSTextField *nameLabel;
 @property(nonatomic, strong) NSTextField *percentLabel;
 @property(nonatomic, strong) NSTextField *resetLabel;
-@property(nonatomic, strong) NSView *colorDot;
 @property(nonatomic, strong) CQProgressView *progressView;
 @property(nonatomic, strong, nullable) NSLayoutConstraint *stackWidthConstraint;
 - (instancetype)initWithWindow:(CQRateLimitWindow *)window;
@@ -167,18 +104,12 @@ static NSStackView *CQHorizontal(void) {
 
     self.orientation = NSUserInterfaceLayoutOrientationVertical;
     self.alignment = NSLayoutAttributeLeading;
-    self.spacing = 3;
+    self.spacing = 4;
     self.edgeInsets = NSEdgeInsetsZero;
     self.wantsLayer = YES;
 
     NSStackView *line = CQHorizontal();
-    self.colorDot = [NSView new];
-    self.colorDot.wantsLayer = YES;
-    self.colorDot.layer.cornerRadius = 3;
-    [self.colorDot.widthAnchor constraintEqualToConstant:6].active = YES;
-    [self.colorDot.heightAnchor constraintEqualToConstant:6].active = YES;
-    [line addArrangedSubview:self.colorDot];
-    self.nameLabel = CQLabel(@"", [NSFont systemFontOfSize:11.5 weight:NSFontWeightSemibold], CQTheme.text);
+    self.nameLabel = CQLabel(@"", [NSFont systemFontOfSize:12 weight:NSFontWeightMedium], CQTheme.text);
     [self.nameLabel setContentCompressionResistancePriority:NSLayoutPriorityDefaultLow
                                              forOrientation:NSLayoutConstraintOrientationHorizontal];
     [line addArrangedSubview:self.nameLabel];
@@ -186,7 +117,7 @@ static NSStackView *CQHorizontal(void) {
     [spacer setContentHuggingPriority:NSLayoutPriorityDefaultLow
                        forOrientation:NSLayoutConstraintOrientationHorizontal];
     [line addArrangedSubview:spacer];
-    self.percentLabel = CQLabel(@"", [NSFont monospacedDigitSystemFontOfSize:15
+    self.percentLabel = CQLabel(@"", [NSFont monospacedDigitSystemFontOfSize:18
                                                                      weight:NSFontWeightSemibold], CQTheme.accent);
     self.percentLabel.alignment = NSTextAlignmentRight;
     [self.percentLabel setContentCompressionResistancePriority:NSLayoutPriorityRequired
@@ -196,24 +127,28 @@ static NSStackView *CQHorizontal(void) {
 
     self.progressView = [CQProgressView new];
     [self addArrangedSubview:self.progressView];
-    self.resetLabel = CQLabel(@"", [NSFont systemFontOfSize:9.5 weight:NSFontWeightMedium], CQTheme.overlay);
+    self.resetLabel = CQLabel(@"", [NSFont systemFontOfSize:10.5], CQTheme.subtext);
     [self addArrangedSubview:self.resetLabel];
     [line.widthAnchor constraintEqualToAnchor:self.widthAnchor].active = YES;
     [self.progressView.widthAnchor constraintEqualToAnchor:self.widthAnchor].active = YES;
+    [self.resetLabel.widthAnchor constraintEqualToAnchor:self.widthAnchor].active = YES;
     [self updateWithWindow:window animated:NO];
     return self;
 }
 
 - (void)updateWithWindow:(CQRateLimitWindow *)window animated:(BOOL)animated {
     NSColor *color = [CQTheme colorForRemaining:window.remainingPercent];
-    self.colorDot.layer.backgroundColor = color.CGColor;
-    self.nameLabel.stringValue = window.name;
+    NSString *duration = CQDurationLabel(window.durationMinutes);
+    NSString *suffix = [@" · " stringByAppendingString:duration];
+    self.nameLabel.stringValue = [window.name hasSuffix:suffix] ? [window.name substringToIndex:window.name.length - suffix.length] : window.name;
+    self.nameLabel.toolTip = window.name;
     self.percentLabel.stringValue = [NSString stringWithFormat:@"%.0f%%", window.remainingPercent];
-    self.percentLabel.textColor = color;
-    self.resetLabel.stringValue = window.resetsAt
-        ? [NSString stringWithFormat:@"%@ · %@",
-           CQRelativeDateString(window.resetsAt), CQAbsoluteDateString(window.resetsAt)]
-        : @"重置时间不可用";
+    self.percentLabel.textColor = window.remainingPercent <= 50 ? color : CQTheme.text;
+    NSString *reset = window.resetsAt ? CQRelativeDateString(window.resetsAt) : @"重置时间不可用";
+    if (window.resetsAt && [window.resetsAt timeIntervalSinceNow] > 0) reset = [reset stringByAppendingString:@"重置"];
+    self.resetLabel.stringValue = [NSString stringWithFormat:@"%@窗口 · %@", duration, reset];
+    self.resetLabel.toolTip = window.resetsAt ? [@"重置于 " stringByAppendingString:CQAbsoluteDateString(window.resetsAt)] : reset;
+    self.percentLabel.accessibilityLabel = [NSString stringWithFormat:@"%@，剩余 %@", window.name, self.percentLabel.stringValue];
     self.progressView.accessibilityLabel = [NSString stringWithFormat:@"%@剩余额度", window.name];
     self.progressView.accessibilityValue = [NSString stringWithFormat:@"%.0f%%", window.remainingPercent];
     [self.progressView setProgress:window.remainingPercent / 100.0 color:color animated:animated];
@@ -315,56 +250,43 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
     self.wantsLayer = YES;
     self.layer.cornerRadius = 9;
     self.layer.cornerCurve = kCACornerCurveContinuous;
-    [self.heightAnchor constraintEqualToConstant:46].active = YES;
+    [self.heightAnchor constraintEqualToConstant:48].active = YES;
 
     self.stateImageView = [NSImageView new];
-    self.stateImageView.translatesAutoresizingMaskIntoConstraints = NO;
-    [self addSubview:self.stateImageView];
-
-    NSStackView *identity = [NSStackView new];
-    identity.orientation = NSUserInterfaceLayoutOrientationVertical;
-    identity.alignment = NSLayoutAttributeLeading;
-    identity.spacing = 2;
-    identity.translatesAutoresizingMaskIntoConstraints = NO;
-    [self addSubview:identity];
-    self.taskTitleLabel = CQLabel(@"", [NSFont systemFontOfSize:11.5 weight:NSFontWeightSemibold], CQTheme.text);
-    [self.taskTitleLabel setContentCompressionResistancePriority:NSLayoutPriorityDefaultLow
-                                                  forOrientation:NSLayoutConstraintOrientationHorizontal];
-    self.projectLabel = CQLabel(@"", [NSFont systemFontOfSize:9.5 weight:NSFontWeightMedium], CQTheme.overlay);
-    [identity addArrangedSubview:self.taskTitleLabel];
-    [identity addArrangedSubview:self.projectLabel];
-
-    NSStackView *status = [NSStackView new];
-    status.orientation = NSUserInterfaceLayoutOrientationVertical;
-    status.alignment = NSLayoutAttributeTrailing;
-    status.spacing = 2;
-    status.translatesAutoresizingMaskIntoConstraints = NO;
-    [self addSubview:status];
-    self.stateLabel = CQLabel(@"", [NSFont systemFontOfSize:9.5 weight:NSFontWeightSemibold], CQTheme.accent);
-    self.stateLabel.alignment = NSTextAlignmentRight;
-    self.timeLabel = CQLabel(@"", [NSFont monospacedDigitSystemFontOfSize:9 weight:NSFontWeightMedium], CQTheme.overlay);
-    self.timeLabel.alignment = NSTextAlignmentRight;
-    [status addArrangedSubview:self.stateLabel];
-    [status addArrangedSubview:self.timeLabel];
-
+    self.taskTitleLabel = CQLabel(@"", [NSFont systemFontOfSize:12 weight:NSFontWeightMedium], CQTheme.text);
+    self.projectLabel = CQLabel(@"", [NSFont systemFontOfSize:10.5], CQTheme.subtext);
+    self.stateLabel = CQLabel(@"", [NSFont systemFontOfSize:10.5 weight:NSFontWeightMedium], CQTheme.accent);
+    self.timeLabel = CQLabel(@"", [NSFont monospacedDigitSystemFontOfSize:10 weight:NSFontWeightRegular], CQTheme.subtext);
+    for (NSView *view in @[self.stateImageView, self.taskTitleLabel, self.projectLabel, self.stateLabel, self.timeLabel]) {
+        view.translatesAutoresizingMaskIntoConstraints = NO;
+        [self addSubview:view];
+    }
+    [self.taskTitleLabel setContentCompressionResistancePriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
+    [self.projectLabel setContentCompressionResistancePriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
+    [self.stateLabel setContentCompressionResistancePriority:NSLayoutPriorityRequired forOrientation:NSLayoutConstraintOrientationHorizontal];
+    [self.timeLabel setContentCompressionResistancePriority:NSLayoutPriorityRequired forOrientation:NSLayoutConstraintOrientationHorizontal];
     [NSLayoutConstraint activateConstraints:@[
-        [self.stateImageView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:6],
+        [self.stateImageView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:2],
         [self.stateImageView.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-        [self.stateImageView.widthAnchor constraintEqualToConstant:14],
-        [self.stateImageView.heightAnchor constraintEqualToConstant:14],
-        [identity.leadingAnchor constraintEqualToAnchor:self.stateImageView.trailingAnchor constant:8],
-        [identity.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-        [identity.trailingAnchor constraintLessThanOrEqualToAnchor:status.leadingAnchor constant:-8],
-        [status.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-6],
-        [status.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-        [status.widthAnchor constraintGreaterThanOrEqualToConstant:68]
+        [self.stateImageView.widthAnchor constraintEqualToConstant:13],
+        [self.stateImageView.heightAnchor constraintEqualToConstant:13],
+        [self.taskTitleLabel.leadingAnchor constraintEqualToAnchor:self.stateImageView.trailingAnchor constant:9],
+        [self.taskTitleLabel.topAnchor constraintEqualToAnchor:self.topAnchor constant:7],
+        [self.taskTitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.stateLabel.leadingAnchor constant:-8],
+        [self.stateLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-2],
+        [self.stateLabel.firstBaselineAnchor constraintEqualToAnchor:self.taskTitleLabel.firstBaselineAnchor],
+        [self.projectLabel.leadingAnchor constraintEqualToAnchor:self.taskTitleLabel.leadingAnchor],
+        [self.projectLabel.topAnchor constraintEqualToAnchor:self.taskTitleLabel.bottomAnchor constant:4],
+        [self.projectLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.timeLabel.leadingAnchor constant:-8],
+        [self.timeLabel.trailingAnchor constraintEqualToAnchor:self.stateLabel.trailingAnchor],
+        [self.timeLabel.firstBaselineAnchor constraintEqualToAnchor:self.projectLabel.firstBaselineAnchor]
     ]];
     [self updateWithTask:task];
     return self;
 }
 
 - (NSView *)hitTest:(NSPoint)point {
-    return NSPointInRect(point, self.bounds) && !self.hidden ? self : nil;
+    return [super hitTest:point] ? self : nil;
 }
 
 - (void)updateTrackingAreas {
@@ -465,6 +387,7 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
 @property(nonatomic, strong) NSTextField *providerMetricTitleLabel;
 @property(nonatomic, strong) NSTextField *deepSeekBalanceLabel;
 @property(nonatomic, strong) NSTextField *quotaTitleLabel;
+@property(nonatomic, strong) NSTextField *quotaSummaryLabel;
 @property(nonatomic, strong) NSView *quotaPanel;
 @property(nonatomic, strong) NSView *quotaDetailsDivider;
 @property(nonatomic, strong) NSStackView *quotaStack;
@@ -484,7 +407,7 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
 @implementation CQPopoverController
 
 - (void)loadView {
-    NSView *root = CQWindowGlassView();
+    NSView *root = CQPanelBackground();
     root.appearance = [NSAppearance appearanceNamed:NSAppearanceNameAqua];
     self.view = root;
     self.preferredContentSize = NSMakeSize(360, 470);
@@ -505,7 +428,7 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
     NSStackView *content = [NSStackView new];
     content.orientation = NSUserInterfaceLayoutOrientationVertical;
     content.alignment = NSLayoutAttributeLeading;
-    content.spacing = 11;
+    content.spacing = 14;
     content.translatesAutoresizingMaskIntoConstraints = NO;
     [document addSubview:content];
     self.contentStack = content;
@@ -514,24 +437,24 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
     self.taskSignature = @"";
 
     NSStackView *header = CQHorizontal();
-    NSTextField *title = CQLabel(@"Codex Quota", [NSFont systemFontOfSize:20 weight:NSFontWeightSemibold], CQTheme.text);
+    NSTextField *title = CQLabel(@"Codex Quota", [NSFont systemFontOfSize:16 weight:NSFontWeightSemibold], CQTheme.text);
+    NSImageView *brandIcon = [NSImageView new];
+    brandIcon.image = [NSImage imageWithSystemSymbolName:@"gauge.with.needle" accessibilityDescription:nil];
+    brandIcon.contentTintColor = CQTheme.text;
+    [brandIcon.widthAnchor constraintEqualToConstant:18].active = YES;
+    [brandIcon.heightAnchor constraintEqualToConstant:18].active = YES;
+    [header addArrangedSubview:brandIcon];
     [header addArrangedSubview:title];
     NSView *spacer = [NSView new];
     [spacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
     [header addArrangedSubview:spacer];
-    NSButton *extensions = CQButton(@"扩展", @"puzzlepiece.extension", self, @selector(showExtensions:));
+    NSButton *extensions = CQQuietButton(@"扩展", @"puzzlepiece.extension", self, @selector(showExtensions:));
     extensions.toolTip = @"管理第三方与自建 Skill / 插件";
-    [header addArrangedSubview:extensions];
+
 
     self.statusPill = CQHorizontal();
     self.statusPill.spacing = 6;
-    self.statusPill.edgeInsets = NSEdgeInsetsMake(4, 8, 4, 8);
-    self.statusPill.wantsLayer = YES;
-    self.statusPill.layer.backgroundColor = [CQTheme.yellow colorWithAlphaComponent:0.10].CGColor;
-    self.statusPill.layer.borderColor = [CQTheme.yellow colorWithAlphaComponent:0.26].CGColor;
-    self.statusPill.layer.borderWidth = 0.5;
-    self.statusPill.layer.cornerRadius = 11;
-    self.statusPill.layer.cornerCurve = kCACornerCurveContinuous;
+    self.statusPill.edgeInsets = NSEdgeInsetsZero;
     self.statusDot = [NSView new];
     self.statusDot.wantsLayer = YES;
     self.statusDot.layer.backgroundColor = CQTheme.yellow.CGColor;
@@ -539,15 +462,16 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
     [self.statusDot.widthAnchor constraintEqualToConstant:6].active = YES;
     [self.statusDot.heightAnchor constraintEqualToConstant:6].active = YES;
     [self.statusPill addArrangedSubview:self.statusDot];
-    self.statusLabel = CQLabel(@"连接中", [NSFont systemFontOfSize:10.5 weight:NSFontWeightSemibold], CQTheme.yellow);
+    self.statusLabel = CQLabel(@"连接中", [NSFont systemFontOfSize:10.5 weight:NSFontWeightMedium], CQTheme.subtext);
     self.statusLabel.alignment = NSTextAlignmentRight;
     [self.statusPill addArrangedSubview:self.statusLabel];
     [header addArrangedSubview:self.statusPill];
     [content addArrangedSubview:header];
+    [content setCustomSpacing:8 afterView:header];
 
     NSStackView *subheader = CQHorizontal();
-    self.detailLabel = CQLabel(@"正在查找 Codex…", [NSFont systemFontOfSize:11.5 weight:NSFontWeightMedium], CQTheme.subtext);
-    self.planLabel = CQLabel(@"", [NSFont systemFontOfSize:10 weight:NSFontWeightBold], CQTheme.lavender);
+    self.detailLabel = CQLabel(@"正在查找 Codex…", [NSFont systemFontOfSize:10.5], CQTheme.subtext);
+    self.planLabel = CQLabel(@"", [NSFont systemFontOfSize:10 weight:NSFontWeightMedium], CQTheme.subtext);
     [subheader addArrangedSubview:self.detailLabel];
     NSView *subSpacer = [NSView new];
     [subSpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
@@ -559,29 +483,31 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
                                                              trackingMode:NSSegmentSwitchTrackingSelectOne
                                                                    target:self
                                                                    action:@selector(providerChanged:)];
-    self.providerControl.segmentStyle = NSSegmentStyleCapsule;
+    self.providerControl.segmentStyle = NSSegmentStyleRounded;
+    self.providerControl.font = [NSFont systemFontOfSize:12 weight:NSFontWeightMedium];
+    self.providerControl.segmentDistribution = NSSegmentDistributionFillEqually;
     self.providerControl.controlSize = NSControlSizeRegular;
     self.providerControl.selectedSegment = 0;
     self.providerControl.accessibilityLabel = @"模型来源";
     [content addArrangedSubview:self.providerControl];
 
-    self.taskPanel = CQDashboardGlassSurface(14);
+    self.taskPanel = [NSView new];
     NSStackView *taskContent = [NSStackView new];
     taskContent.orientation = NSUserInterfaceLayoutOrientationVertical;
     taskContent.alignment = NSLayoutAttributeLeading;
-    taskContent.spacing = 9;
+    taskContent.spacing = 8;
     taskContent.translatesAutoresizingMaskIntoConstraints = NO;
     [self.taskPanel addSubview:taskContent];
     NSStackView *taskHeader = CQHorizontal();
-    [taskHeader addArrangedSubview:CQLabel(@"任务动态", [NSFont systemFontOfSize:11.5 weight:NSFontWeightSemibold], CQTheme.subtext)];
+    [taskHeader addArrangedSubview:CQLabel(@"任务动态", [NSFont systemFontOfSize:12 weight:NSFontWeightSemibold], CQTheme.text)];
     NSView *taskHeaderSpacer = [NSView new];
     [taskHeaderSpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
     [taskHeader addArrangedSubview:taskHeaderSpacer];
-    self.taskCountLabel = CQLabel(@"", [NSFont monospacedDigitSystemFontOfSize:9.5 weight:NSFontWeightSemibold], CQTheme.overlay);
+    self.taskCountLabel = CQLabel(@"", [NSFont monospacedDigitSystemFontOfSize:10 weight:NSFontWeightMedium], CQTheme.subtext);
     self.taskCountLabel.alignment = NSTextAlignmentRight;
     [taskHeader addArrangedSubview:self.taskCountLabel];
-    self.markAllTasksViewedButton = CQQuietButton(@"全部已查看", @"checkmark", self, @selector(markAllTasksViewed:));
-    self.markAllTasksViewedButton.font = [NSFont systemFontOfSize:9.5 weight:NSFontWeightMedium];
+    self.markAllTasksViewedButton = CQQuietButton(@"全部已读", @"checkmark", self, @selector(markAllTasksViewed:));
+    self.markAllTasksViewedButton.font = [NSFont systemFontOfSize:10.5 weight:NSFontWeightMedium];
     self.markAllTasksViewedButton.toolTip = @"移除所有已完成提醒";
     self.markAllTasksViewedButton.hidden = YES;
     [taskHeader addArrangedSubview:self.markAllTasksViewedButton];
@@ -589,19 +515,19 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
     self.taskStack = [NSStackView new];
     self.taskStack.orientation = NSUserInterfaceLayoutOrientationVertical;
     self.taskStack.alignment = NSLayoutAttributeLeading;
-    self.taskStack.spacing = 4;
+    self.taskStack.spacing = 0;
     [taskContent addArrangedSubview:self.taskStack];
     [NSLayoutConstraint activateConstraints:@[
-        [taskContent.leadingAnchor constraintEqualToAnchor:self.taskPanel.leadingAnchor constant:11],
-        [taskContent.trailingAnchor constraintEqualToAnchor:self.taskPanel.trailingAnchor constant:-11],
-        [taskContent.topAnchor constraintEqualToAnchor:self.taskPanel.topAnchor constant:9],
-        [taskContent.bottomAnchor constraintEqualToAnchor:self.taskPanel.bottomAnchor constant:-9],
+        [taskContent.leadingAnchor constraintEqualToAnchor:self.taskPanel.leadingAnchor],
+        [taskContent.trailingAnchor constraintEqualToAnchor:self.taskPanel.trailingAnchor],
+        [taskContent.topAnchor constraintEqualToAnchor:self.taskPanel.topAnchor],
+        [taskContent.bottomAnchor constraintEqualToAnchor:self.taskPanel.bottomAnchor],
         [taskHeader.widthAnchor constraintEqualToAnchor:taskContent.widthAnchor],
         [self.taskStack.widthAnchor constraintEqualToAnchor:taskContent.widthAnchor]
     ]];
-    [content addArrangedSubview:self.taskPanel];
 
-    self.deepSeekPanel = CQDashboardGlassSurface(16);
+
+    self.deepSeekPanel = [NSView new];
     self.deepSeekSettings = [NSStackView new];
     self.deepSeekSettings.orientation = NSUserInterfaceLayoutOrientationVertical;
     self.deepSeekSettings.alignment = NSLayoutAttributeLeading;
@@ -610,7 +536,7 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
     [self.deepSeekPanel addSubview:self.deepSeekSettings];
 
     NSStackView *modelRow = CQHorizontal();
-    [modelRow addArrangedSubview:CQLabel(@"具体模型", [NSFont systemFontOfSize:12 weight:NSFontWeightMedium], CQTheme.subtext)];
+    [modelRow addArrangedSubview:CQLabel(@"当前模型", [NSFont systemFontOfSize:12 weight:NSFontWeightMedium], CQTheme.subtext)];
     NSView *modelSpacer = [NSView new];
     [modelSpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
     [modelRow addArrangedSubview:modelSpacer];
@@ -637,7 +563,7 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
     [self.deepSeekSettings addArrangedSubview:balanceRow];
 
     NSStackView *keyRow = CQHorizontal();
-    [keyRow addArrangedSubview:CQLabel(@"API Key 已配置，可随时更换",
+    [keyRow addArrangedSubview:CQLabel(@"连接凭据",
         [NSFont systemFontOfSize:10], CQTheme.overlay)];
     NSView *keySpacer = [NSView new];
     [keySpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
@@ -648,45 +574,47 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
     [balanceRow.widthAnchor constraintEqualToAnchor:self.deepSeekSettings.widthAnchor].active = YES;
     [keyRow.widthAnchor constraintEqualToAnchor:self.deepSeekSettings.widthAnchor].active = YES;
     [NSLayoutConstraint activateConstraints:@[
-        [self.deepSeekSettings.leadingAnchor constraintEqualToAnchor:self.deepSeekPanel.leadingAnchor constant:14],
-        [self.deepSeekSettings.trailingAnchor constraintEqualToAnchor:self.deepSeekPanel.trailingAnchor constant:-14],
-        [self.deepSeekSettings.topAnchor constraintEqualToAnchor:self.deepSeekPanel.topAnchor constant:14],
-        [self.deepSeekSettings.bottomAnchor constraintEqualToAnchor:self.deepSeekPanel.bottomAnchor constant:-14]
+        [self.deepSeekSettings.leadingAnchor constraintEqualToAnchor:self.deepSeekPanel.leadingAnchor],
+        [self.deepSeekSettings.trailingAnchor constraintEqualToAnchor:self.deepSeekPanel.trailingAnchor],
+        [self.deepSeekSettings.topAnchor constraintEqualToAnchor:self.deepSeekPanel.topAnchor constant:2],
+        [self.deepSeekSettings.bottomAnchor constraintEqualToAnchor:self.deepSeekPanel.bottomAnchor constant:-2]
     ]];
     self.deepSeekPanel.hidden = YES;
     [content addArrangedSubview:self.deepSeekPanel];
 
-    self.quotaPanel = CQDashboardGlassSurface(14);
+    self.quotaPanel = [NSView new];
     NSStackView *quotaContent = [NSStackView new];
     quotaContent.orientation = NSUserInterfaceLayoutOrientationVertical;
     quotaContent.alignment = NSLayoutAttributeLeading;
-    quotaContent.spacing = 7;
+    quotaContent.spacing = 10;
     quotaContent.translatesAutoresizingMaskIntoConstraints = NO;
     [self.quotaPanel addSubview:quotaContent];
     NSStackView *quotaHeader = CQHorizontal();
-    self.quotaTitleLabel = CQLabel(@"可用额度", [NSFont systemFontOfSize:11.5 weight:NSFontWeightSemibold], CQTheme.subtext);
+    self.quotaTitleLabel = CQLabel(@"可用额度", [NSFont systemFontOfSize:12 weight:NSFontWeightSemibold], CQTheme.text);
     [quotaHeader addArrangedSubview:self.quotaTitleLabel];
     NSView *quotaHeaderSpacer = [NSView new];
     [quotaHeaderSpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
     [quotaHeader addArrangedSubview:quotaHeaderSpacer];
-    [quotaHeader addArrangedSubview:CQLabel(@"剩余", [NSFont systemFontOfSize:9.5 weight:NSFontWeightSemibold], CQTheme.overlay)];
+    self.quotaSummaryLabel = CQLabel(@"剩余", [NSFont systemFontOfSize:10.5], CQTheme.subtext);
+    [quotaHeader addArrangedSubview:self.quotaSummaryLabel];
     [quotaContent addArrangedSubview:quotaHeader];
     self.quotaStack = [NSStackView new];
     self.quotaStack.orientation = NSUserInterfaceLayoutOrientationVertical;
     self.quotaStack.alignment = NSLayoutAttributeLeading;
-    self.quotaStack.spacing = 7;
+    self.quotaStack.spacing = 10;
     [quotaContent addArrangedSubview:self.quotaStack];
 
     self.quotaDetailsDivider = CQDivider();
     [quotaContent addArrangedSubview:self.quotaDetailsDivider];
     self.resetRow = CQHorizontal();
-    [self.resetRow addArrangedSubview:CQLabel(@"剩余重置次数", [NSFont systemFontOfSize:11], CQTheme.subtext)];
+    [self.resetRow addArrangedSubview:CQLabel(@"可用重置", [NSFont systemFontOfSize:11], CQTheme.subtext)];
     NSView *resetSpacer = [NSView new];
     [resetSpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
     [self.resetRow addArrangedSubview:resetSpacer];
     self.resetValueLabel = CQLabel(@"不可用", [NSFont monospacedDigitSystemFontOfSize:12 weight:NSFontWeightSemibold], CQTheme.text);
     [self.resetRow addArrangedSubview:self.resetValueLabel];
     [quotaContent addArrangedSubview:self.resetRow];
+    [quotaContent setCustomSpacing:7 afterView:self.resetRow];
 
     self.workspaceRow = CQHorizontal();
     [self.workspaceRow addArrangedSubview:CQLabel(@"工作区额度", [NSFont systemFontOfSize:11], CQTheme.subtext)];
@@ -698,10 +626,10 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
     self.workspaceRow.hidden = YES;
     [quotaContent addArrangedSubview:self.workspaceRow];
     [NSLayoutConstraint activateConstraints:@[
-        [quotaContent.leadingAnchor constraintEqualToAnchor:self.quotaPanel.leadingAnchor constant:11],
-        [quotaContent.trailingAnchor constraintEqualToAnchor:self.quotaPanel.trailingAnchor constant:-11],
-        [quotaContent.topAnchor constraintEqualToAnchor:self.quotaPanel.topAnchor constant:8],
-        [quotaContent.bottomAnchor constraintEqualToAnchor:self.quotaPanel.bottomAnchor constant:-8],
+        [quotaContent.leadingAnchor constraintEqualToAnchor:self.quotaPanel.leadingAnchor],
+        [quotaContent.trailingAnchor constraintEqualToAnchor:self.quotaPanel.trailingAnchor],
+        [quotaContent.topAnchor constraintEqualToAnchor:self.quotaPanel.topAnchor],
+        [quotaContent.bottomAnchor constraintEqualToAnchor:self.quotaPanel.bottomAnchor],
         [quotaHeader.widthAnchor constraintEqualToAnchor:quotaContent.widthAnchor],
         [self.quotaStack.widthAnchor constraintEqualToAnchor:quotaContent.widthAnchor],
         [self.quotaDetailsDivider.widthAnchor constraintEqualToAnchor:quotaContent.widthAnchor],
@@ -709,6 +637,10 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
         [self.workspaceRow.widthAnchor constraintEqualToAnchor:quotaContent.widthAnchor]
     ]];
     [content addArrangedSubview:self.quotaPanel];
+    NSView *taskDivider = CQDivider();
+    [content addArrangedSubview:taskDivider];
+    [taskDivider.widthAnchor constraintEqualToAnchor:content.widthAnchor].active = YES;
+    [content addArrangedSubview:self.taskPanel];
 
     self.errorLabel = CQLabel(@"", [NSFont systemFontOfSize:11], CQTheme.red);
     self.errorLabel.maximumNumberOfLines = 3;
@@ -716,14 +648,14 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
     self.errorLabel.hidden = YES;
     [content addArrangedSubview:self.errorLabel];
 
-    NSView *footer = CQDashboardGlassSurface(16);
+    NSView *footer = CQFooterSurface();
     footer.translatesAutoresizingMaskIntoConstraints = NO;
     [root addSubview:footer];
 
     NSStackView *footerStack = [NSStackView new];
     footerStack.orientation = NSUserInterfaceLayoutOrientationVertical;
     footerStack.alignment = NSLayoutAttributeCenterX;
-    footerStack.spacing = 5;
+    footerStack.spacing = 8;
     footerStack.translatesAutoresizingMaskIntoConstraints = NO;
     [footer addSubview:footerStack];
 
@@ -733,13 +665,14 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
     NSView *primarySpacer = [NSView new];
     [primarySpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
     [primaryRow addArrangedSubview:primarySpacer];
-    self.refreshButton = CQPrimaryButton(@"刷新", @"arrow.clockwise", self, @selector(refresh:));
-    [self.refreshButton.widthAnchor constraintGreaterThanOrEqualToConstant:72].active = YES;
+    [primaryRow addArrangedSubview:extensions];
+    self.refreshButton = CQQuietButton(@"刷新", @"arrow.clockwise", self, @selector(refresh:));
+    [self.refreshButton.widthAnchor constraintGreaterThanOrEqualToConstant:54].active = YES;
     [primaryRow addArrangedSubview:self.refreshButton];
     [footerStack addArrangedSubview:primaryRow];
 
     NSStackView *actions = CQHorizontal();
-    actions.spacing = 10;
+    actions.spacing = 8;
     self.loginButton = CQQuietButton(@"登录", @"person.crop.circle", self, @selector(login:));
     NSButton *choose = CQQuietButton(@"选择 Codex", @"terminal", self, @selector(chooseCodex:));
     NSButton *quit = CQQuietButton(@"退出", @"power", self, @selector(quit:));
@@ -757,27 +690,27 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
                 NSFontAttributeName: [NSFont systemFontOfSize:10.5 weight:NSFontWeightMedium],
                 NSForegroundColorAttributeName: CQTheme.text
             }];
-    self.launchCheckbox.contentTintColor = CQTheme.accent;
+    self.launchCheckbox.contentTintColor = CQTheme.text;
     [actions addArrangedSubview:self.launchCheckbox];
     [footerStack addArrangedSubview:actions];
 
     [NSLayoutConstraint activateConstraints:@[
-        [footer.leadingAnchor constraintEqualToAnchor:root.leadingAnchor constant:10],
-        [footer.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-10],
-        [footer.bottomAnchor constraintEqualToAnchor:root.bottomAnchor constant:-10],
-        [footer.heightAnchor constraintEqualToConstant:82],
+        [footer.leadingAnchor constraintEqualToAnchor:root.leadingAnchor],
+        [footer.trailingAnchor constraintEqualToAnchor:root.trailingAnchor],
+        [footer.bottomAnchor constraintEqualToAnchor:root.bottomAnchor],
+        [footer.heightAnchor constraintEqualToConstant:68],
         [scroll.leadingAnchor constraintEqualToAnchor:root.leadingAnchor],
         [scroll.trailingAnchor constraintEqualToAnchor:root.trailingAnchor],
         [scroll.topAnchor constraintEqualToAnchor:root.topAnchor],
-        [scroll.bottomAnchor constraintEqualToAnchor:footer.topAnchor constant:-4],
+        [scroll.bottomAnchor constraintEqualToAnchor:footer.topAnchor],
         [document.leadingAnchor constraintEqualToAnchor:scroll.contentView.leadingAnchor],
         [document.trailingAnchor constraintEqualToAnchor:scroll.contentView.trailingAnchor],
         [document.topAnchor constraintEqualToAnchor:scroll.contentView.topAnchor],
         [document.widthAnchor constraintEqualToAnchor:scroll.contentView.widthAnchor],
-        [content.leadingAnchor constraintEqualToAnchor:document.leadingAnchor constant:16],
-        [content.trailingAnchor constraintEqualToAnchor:document.trailingAnchor constant:-16],
-        [content.topAnchor constraintEqualToAnchor:document.topAnchor constant:10],
-        [content.bottomAnchor constraintEqualToAnchor:document.bottomAnchor constant:-10],
+        [content.leadingAnchor constraintEqualToAnchor:document.leadingAnchor constant:20],
+        [content.trailingAnchor constraintEqualToAnchor:document.trailingAnchor constant:-20],
+        [content.topAnchor constraintEqualToAnchor:document.topAnchor constant:16],
+        [content.bottomAnchor constraintEqualToAnchor:document.bottomAnchor constant:-14],
         [header.widthAnchor constraintEqualToAnchor:content.widthAnchor],
         [subheader.widthAnchor constraintEqualToAnchor:content.widthAnchor],
         [self.providerControl.widthAnchor constraintEqualToAnchor:content.widthAnchor],
@@ -785,8 +718,8 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
         [self.deepSeekPanel.widthAnchor constraintEqualToAnchor:content.widthAnchor],
         [self.quotaPanel.widthAnchor constraintEqualToAnchor:content.widthAnchor],
         [self.errorLabel.widthAnchor constraintEqualToAnchor:content.widthAnchor],
-        [footerStack.leadingAnchor constraintGreaterThanOrEqualToAnchor:footer.leadingAnchor constant:14],
-        [footerStack.trailingAnchor constraintLessThanOrEqualToAnchor:footer.trailingAnchor constant:-14],
+        [footerStack.leadingAnchor constraintEqualToAnchor:footer.leadingAnchor constant:20],
+        [footerStack.trailingAnchor constraintEqualToAnchor:footer.trailingAnchor constant:-20],
         [footerStack.centerXAnchor constraintEqualToAnchor:footer.centerXAnchor],
         [footerStack.centerYAnchor constraintEqualToAnchor:footer.centerYAnchor],
         [primaryRow.widthAnchor constraintEqualToAnchor:footerStack.widthAnchor],
@@ -823,10 +756,10 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
     snapshot = snapshot ?: [CQTaskSnapshot emptySnapshot];
     NSString *signature = snapshot.contentSignature;
     self.taskCountLabel.stringValue = snapshot.attentionCount > 0
-        ? [NSString stringWithFormat:@"%lu 项需关注", (unsigned long)snapshot.attentionCount]
-        : @"已清空";
+        ? [NSString stringWithFormat:@"%lu 项", (unsigned long)snapshot.attentionCount]
+        : @"";
     self.markAllTasksViewedButton.hidden = snapshot.unreadCompletedTasks.count == 0;
-    if ([signature isEqualToString:self.taskSignature]) {
+    if ([signature isEqualToString:self.taskSignature] && self.taskStack.arrangedSubviews.count > 0) {
         for (CQCodexTask *task in [self allTasksInSnapshot:snapshot]) {
             [self.taskRows[task.turnID] updateWithTask:task];
         }
@@ -956,16 +889,14 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
     BOOL glm = providerMode == CQProviderModeGLM;
     BOOL externalProvider = providerMode != CQProviderModeCodex;
     self.statusLabel.stringValue = status;
-    NSColor *statusColor = [status isEqualToString:@"已连接"] ? CQTheme.accent
+    NSColor *statusColor = [status isEqualToString:@"已连接"] ? CQTheme.green
         : ([status isEqualToString:@"需要登录"]
            || [status isEqualToString:@"需要 API Key"]
            || [status isEqualToString:@"已断开"] ? CQTheme.red : CQTheme.yellow);
-    self.statusLabel.textColor = statusColor;
+    self.statusLabel.textColor = CQTheme.subtext;
     self.statusDot.layer.backgroundColor = statusColor.CGColor;
-    self.statusPill.layer.backgroundColor = [statusColor colorWithAlphaComponent:0.10].CGColor;
-    self.statusPill.layer.borderColor = [statusColor colorWithAlphaComponent:0.28].CGColor;
     self.detailLabel.stringValue = detail;
-    self.planLabel.stringValue = deepSeek ? @"DEEPSEEK" : (glm ? @"ZHIPU GLM" : (snapshot.planType.uppercaseString ?: @""));
+    self.planLabel.stringValue = deepSeek ? @"DEEPSEEK" : (glm ? @"ZHIPU GLM" : (snapshot.planType.capitalizedString ?: @""));
     self.providerControl.selectedSegment = deepSeek ? 1 : (glm ? 2 : 0);
     [self reconcileTaskSnapshot:taskSnapshot ?: [CQTaskSnapshot emptySnapshot]];
     self.deepSeekPanel.hidden = !externalProvider;
@@ -991,8 +922,24 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
     self.loginButton.hidden = externalProvider || !signedOut;
     self.launchCheckbox.state = launchAtLogin ? NSControlStateValueOn : NSControlStateValueOff;
 
-    if (!externalProvider) [self reconcileQuotaWindows:snapshot.windows ?: @[] hasSnapshot:snapshot != nil];
+    if (!externalProvider) {
+        NSArray<CQRateLimitWindow *> *windows = [snapshot.windows sortedArrayUsingComparator:^NSComparisonResult(CQRateLimitWindow *a, CQRateLimitWindow *b) {
+            if (a.remainingPercent < b.remainingPercent) return NSOrderedAscending;
+            if (a.remainingPercent > b.remainingPercent) return NSOrderedDescending;
+            return [a.limitID compare:b.limitID];
+        }];
+        [self reconcileQuotaWindows:windows ?: @[] hasSnapshot:snapshot != nil];
+        NSUInteger lowCount = 0;
+        for (CQRateLimitWindow *window in windows) if (window.remainingPercent <= 20) lowCount++;
+        self.quotaSummaryLabel.stringValue = lowCount > 0 ? [NSString stringWithFormat:@"剩余 · %lu 项偏低", (unsigned long)lowCount] : @"剩余";
+        self.quotaSummaryLabel.textColor = lowCount > 0 ? CQTheme.red : CQTheme.subtext;
+        if (self.emptyQuotaLabel && (signedOut || error.length > 0)) {
+            self.emptyQuotaLabel.stringValue = signedOut ? @"登录 Codex 后查看订阅额度" : @"暂时无法获取额度，请刷新重试";
+        }
+    }
 
+    self.resetRow.hidden = !snapshot.resetCreditsAvailable;
+    self.quotaDetailsDivider.hidden = !snapshot.resetCreditsAvailable && !snapshot.hasWorkspaceCredits;
     self.resetValueLabel.stringValue = snapshot.resetCreditsAvailable
         ? [NSString stringWithFormat:@"%@ 次", snapshot.resetCreditsAvailable] : @"不可用";
     self.workspaceRow.hidden = externalProvider || !snapshot.hasWorkspaceCredits;
@@ -1004,11 +951,11 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
     self.errorLabel.stringValue = error ?: @"";
     NSDate *updatedAt = deepSeek ? deepSeekBalance.updatedAt : snapshot.updatedAt;
     self.updatedLabel.stringValue = glm ? @"配置已就绪"
-        : (updatedAt ? [NSString stringWithFormat:@"最后更新：%@", CQAbsoluteDateString(updatedAt)] : @"尚未更新");
+        : (updatedAt ? [NSString stringWithFormat:@"更新于 %@", CQAbsoluteDateString(updatedAt)] : @"尚未更新");
 
     [self.view layoutSubtreeIfNeeded];
     CGFloat contentHeight = self.contentStack.fittingSize.height;
-    CGFloat desiredHeight = MAX(CQMainPanelMinimumHeight, ceil(contentHeight + 36 + 100));
+    CGFloat desiredHeight = MAX(CQMainPanelMinimumHeight, ceil(contentHeight + 16 + 14 + 68));
     self.preferredContentSize = NSMakeSize(360, desiredHeight);
 }
 

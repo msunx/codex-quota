@@ -49,14 +49,14 @@ Codex 模式直接复用本机官方登录与 App Server 协议。DeepSeek 与 G
 
 - 产品名称：Codex Quota。
 - 界面语言：简体中文，协议和必要技术名称保留英文。
-- 视觉主题固定为参考图风格的暖灰浅色体系，使用白色内容面、近黑正文、黑色主操作和蓝 / 紫 / 橙 / 玫红数据色。
+- 视觉主题为原生极简浅色体系：统一近白底板、浅灰工具栏、近黑正文和蓝色常规额度线，仅在任务状态、紧张额度与错误中使用语义颜色。
 - 界面必须简洁、克制、流畅，不采用网页式仪表盘堆卡片布局。
 
 ## Evidence on Hand
 
 - 官方 Codex App Server 提供 `account/rateLimits/read` 和 `account/rateLimits/updated`。
 - 当前机器已安装 ChatGPT App 内置 Codex。
-- 仓库从零开始，没有需要继承的旧界面或品牌资产。
+- 现有 AppKit 实现和预览资产均在仓库内；本次改版延续产品名称、360pt 菜单栏面板和既有功能。
 
 ## Product Principles
 

@@ -6,7 +6,7 @@
 static NSView *CQExtensionDivider(void) {
     NSView *view = [NSView new];
     view.wantsLayer = YES;
-    view.layer.backgroundColor = [CQTheme.overlay colorWithAlphaComponent:0.20].CGColor;
+    view.layer.backgroundColor = (NSWorkspace.sharedWorkspace.accessibilityDisplayShouldIncreaseContrast ? CQTheme.overlay : CQTheme.surface).CGColor;
     [view.heightAnchor constraintEqualToConstant:1].active = YES;
     return view;
 }
@@ -53,25 +53,25 @@ static NSStackView *CQExtensionHorizontal(void) {
     self.orientation = NSUserInterfaceLayoutOrientationVertical;
     self.alignment = NSLayoutAttributeLeading;
     self.spacing = 6;
-    self.edgeInsets = NSEdgeInsetsMake(5, 0, 6, 0);
+    self.edgeInsets = NSEdgeInsetsMake(8, 0, 10, 0);
 
     NSStackView *titleRow = CQExtensionHorizontal();
     self.nameLabel = CQLabel(@"", [NSFont systemFontOfSize:13 weight:NSFontWeightSemibold], CQTheme.text);
     [self.nameLabel setContentCompressionResistancePriority:NSLayoutPriorityDefaultLow
                                             forOrientation:NSLayoutConstraintOrientationHorizontal];
     [titleRow addArrangedSubview:self.nameLabel];
-    self.kindLabel = CQLabel(@"", [NSFont systemFontOfSize:9 weight:NSFontWeightBold], CQTheme.lavender);
+    self.kindLabel = CQLabel(@"", [NSFont systemFontOfSize:9 weight:NSFontWeightBold], CQTheme.subtext);
     [titleRow addArrangedSubview:self.kindLabel];
     NSView *spacer = [NSView new];
     [spacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
     [titleRow addArrangedSubview:spacer];
-    self.updateButton = CQButton(@"更新", @"arrow.down.circle", self, @selector(update:));
+    self.updateButton = CQQuietButton(@"更新", @"arrow.down.circle", self, @selector(update:));
     [self.updateButton.widthAnchor constraintGreaterThanOrEqualToConstant:64].active = YES;
-    [titleRow addArrangedSubview:self.updateButton];
-    self.uninstallButton = CQButton(@"卸载", @"trash", self, @selector(uninstall:));
+
+    self.uninstallButton = CQQuietButton(@"", @"trash", self, @selector(uninstall:));
     self.uninstallButton.contentTintColor = CQTheme.red;
-    [self.uninstallButton.widthAnchor constraintGreaterThanOrEqualToConstant:56].active = YES;
-    [titleRow addArrangedSubview:self.uninstallButton];
+    [self.uninstallButton.widthAnchor constraintEqualToConstant:24].active = YES;
+
     [self addArrangedSubview:titleRow];
 
     NSStackView *metaRow = CQExtensionHorizontal();
@@ -84,11 +84,11 @@ static NSStackView *CQExtensionHorizontal(void) {
     [self.metaLabel setContentCompressionResistancePriority:NSLayoutPriorityDefaultLow
                                               forOrientation:NSLayoutConstraintOrientationHorizontal];
     [metaRow addArrangedSubview:self.metaLabel];
-    self.openFolderButton = CQButton(@"", @"folder", self, @selector(openFolder:));
+    self.openFolderButton = CQQuietButton(@"", @"folder", self, @selector(openFolder:));
     self.openFolderButton.imagePosition = NSImageOnly;
     self.openFolderButton.toolTip = @"在 Finder 中打开安装目录";
     [self.openFolderButton.widthAnchor constraintEqualToConstant:30].active = YES;
-    [metaRow addArrangedSubview:self.openFolderButton];
+
     [self addArrangedSubview:metaRow];
 
     self.descriptionLabel = CQLabel(@"", [NSFont systemFontOfSize:11], CQTheme.subtext);
@@ -102,7 +102,16 @@ static NSStackView *CQExtensionHorizontal(void) {
     self.statusLabel = CQLabel(@"", [NSFont systemFontOfSize:10 weight:NSFontWeightMedium], CQTheme.overlay);
     [self.statusLabel setContentCompressionResistancePriority:NSLayoutPriorityDefaultLow
                                                 forOrientation:NSLayoutConstraintOrientationHorizontal];
-    [self addArrangedSubview:self.statusLabel];
+    NSStackView *actionRow = CQExtensionHorizontal();
+    [actionRow addArrangedSubview:self.statusLabel];
+    NSView *actionSpacer = [NSView new];
+    [actionSpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
+    [actionRow addArrangedSubview:actionSpacer];
+    [actionRow addArrangedSubview:self.updateButton];
+    [actionRow addArrangedSubview:self.openFolderButton];
+    [actionRow addArrangedSubview:self.uninstallButton];
+    [self addArrangedSubview:actionRow];
+    [actionRow.widthAnchor constraintEqualToAnchor:self.widthAnchor].active = YES;
 
     self.errorLabel = CQLabel(@"", [NSFont systemFontOfSize:10], CQTheme.red);
     self.errorLabel.maximumNumberOfLines = 2;
@@ -115,7 +124,6 @@ static NSStackView *CQExtensionHorizontal(void) {
     [titleRow.widthAnchor constraintEqualToAnchor:self.widthAnchor].active = YES;
     [metaRow.widthAnchor constraintEqualToAnchor:self.widthAnchor].active = YES;
     [self.descriptionLabel.widthAnchor constraintEqualToAnchor:self.widthAnchor].active = YES;
-    [self.statusLabel.widthAnchor constraintEqualToAnchor:self.widthAnchor].active = YES;
     [self.errorLabel.widthAnchor constraintEqualToAnchor:self.widthAnchor].active = YES;
     [self render];
     return self;
@@ -148,7 +156,7 @@ static NSStackView *CQExtensionHorizontal(void) {
     self.descriptionLabel.stringValue = self.item.summaryText ?: @"";
     self.descriptionLabel.toolTip = self.item.summaryText;
 
-    self.updateButton.hidden = NO;
+    self.updateButton.hidden = !self.item.updateAvailable && self.item.updateState != CQExtensionUpdateStateUpdating;
     self.updateButton.enabled = NO;
     self.errorLabel.hidden = YES;
     self.errorLabel.stringValue = @"";
@@ -210,6 +218,7 @@ static NSStackView *CQExtensionHorizontal(void) {
         self.item.displayName];
     self.uninstallButton.hidden = self.item.kind != CQExtensionKindSkill;
     self.uninstallButton.enabled = self.item.kind == CQExtensionKindSkill;
+    self.uninstallButton.toolTip = [NSString stringWithFormat:@"卸载 %@", self.item.displayName];
     self.uninstallButton.accessibilityLabel = [NSString stringWithFormat:@"卸载 %@", self.item.displayName];
 }
 
@@ -236,6 +245,7 @@ static NSStackView *CQExtensionHorizontal(void) {
 @property(nonatomic, strong) NSTextField *updatedLabel;
 @property(nonatomic, strong) NSTextField *errorLabel;
 @property(nonatomic, strong) NSSegmentedControl *filterControl;
+@property(nonatomic, strong) NSLayoutConstraint *errorHeightConstraint;
 @property(nonatomic, strong) NSStackView *listStack;
 @property(nonatomic, strong) NSButton *checkButton;
 - (void)confirmUninstallItem:(CQExtensionItem *)item;
@@ -254,16 +264,19 @@ static NSStackView *CQExtensionHorizontal(void) {
 }
 
 - (void)loadView {
-    NSView *root = CQWindowGlassView();
+    NSView *root = CQPanelBackground();
     root.appearance = [NSAppearance appearanceNamed:NSAppearanceNameAqua];
     self.view = root;
     self.preferredContentSize = NSMakeSize(360, 500);
 
     NSStackView *header = CQExtensionHorizontal();
     header.translatesAutoresizingMaskIntoConstraints = NO;
-    NSButton *back = CQButton(@"返回", @"chevron.left", self, @selector(back:));
+    NSButton *back = CQQuietButton(@"", @"chevron.left", self, @selector(back:));
+    back.toolTip = @"返回额度面板";
+    back.accessibilityLabel = @"返回额度面板";
+    [back.widthAnchor constraintEqualToConstant:22].active = YES;
     [header addArrangedSubview:back];
-    NSTextField *title = CQLabel(@"扩展管理", [NSFont systemFontOfSize:20 weight:NSFontWeightSemibold], CQTheme.text);
+    NSTextField *title = CQLabel(@"扩展管理", [NSFont systemFontOfSize:16 weight:NSFontWeightSemibold], CQTheme.text);
     [header addArrangedSubview:title];
     NSView *headerSpacer = [NSView new];
     [headerSpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
@@ -280,13 +293,16 @@ static NSStackView *CQExtensionHorizontal(void) {
                                                             trackingMode:NSSegmentSwitchTrackingSelectOne
                                                                   target:self
                                                                   action:@selector(filterChanged:)];
-    self.filterControl.segmentStyle = NSSegmentStyleCapsule;
+    self.filterControl.segmentStyle = NSSegmentStyleRounded;
+    self.filterControl.font = [NSFont systemFontOfSize:12 weight:NSFontWeightMedium];
+    self.filterControl.segmentDistribution = NSSegmentDistributionFillEqually;
+    self.filterControl.accessibilityLabel = @"筛选扩展类型";
     self.filterControl.controlSize = NSControlSizeRegular;
     self.filterControl.selectedSegment = 0;
     self.filterControl.translatesAutoresizingMaskIntoConstraints = NO;
     [root addSubview:self.filterControl];
 
-    NSView *listSurface = CQSurface(16);
+    NSView *listSurface = [NSView new];
     listSurface.translatesAutoresizingMaskIntoConstraints = NO;
     [root addSubview:listSurface];
 
@@ -307,12 +323,8 @@ static NSStackView *CQExtensionHorizontal(void) {
     self.listStack.translatesAutoresizingMaskIntoConstraints = NO;
     [document addSubview:self.listStack];
 
-    NSVisualEffectView *footer = CQGlassView(NSVisualEffectMaterialHeaderView, 16);
+    NSView *footer = CQFooterSurface();
     footer.translatesAutoresizingMaskIntoConstraints = NO;
-    footer.layer.shadowColor = NSColor.blackColor.CGColor;
-    footer.layer.shadowOpacity = 0.10;
-    footer.layer.shadowRadius = 14;
-    footer.layer.shadowOffset = CGSizeMake(0, -4);
     [root addSubview:footer];
     NSStackView *footerStack = [NSStackView new];
     footerStack.orientation = NSUserInterfaceLayoutOrientationHorizontal;
@@ -325,7 +337,7 @@ static NSStackView *CQExtensionHorizontal(void) {
     NSView *footerSpacer = [NSView new];
     [footerSpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
     [footerStack addArrangedSubview:footerSpacer];
-    self.checkButton = CQPrimaryButton(@"检查更新", @"arrow.clockwise", self, @selector(check:));
+    self.checkButton = CQQuietButton(@"检查更新", @"arrow.clockwise", self, @selector(check:));
     [self.checkButton.widthAnchor constraintGreaterThanOrEqualToConstant:94].active = YES;
     [footerStack addArrangedSubview:self.checkButton];
 
@@ -337,22 +349,23 @@ static NSStackView *CQExtensionHorizontal(void) {
     self.errorLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.errorLabel.hidden = YES;
     [root addSubview:self.errorLabel];
+    self.errorHeightConstraint = [self.errorLabel.heightAnchor constraintEqualToConstant:0];
 
     [NSLayoutConstraint activateConstraints:@[
-        [header.leadingAnchor constraintEqualToAnchor:root.leadingAnchor constant:14],
-        [header.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-14],
+        [header.leadingAnchor constraintEqualToAnchor:root.leadingAnchor constant:18],
+        [header.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-20],
         [header.topAnchor constraintEqualToAnchor:root.topAnchor constant:18],
-        [self.summaryLabel.leadingAnchor constraintEqualToAnchor:root.leadingAnchor constant:16],
-        [self.summaryLabel.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-16],
+        [self.summaryLabel.leadingAnchor constraintEqualToAnchor:root.leadingAnchor constant:20],
+        [self.summaryLabel.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-20],
         [self.summaryLabel.topAnchor constraintEqualToAnchor:header.bottomAnchor constant:8],
-        [self.filterControl.leadingAnchor constraintEqualToAnchor:root.leadingAnchor constant:16],
-        [self.filterControl.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-16],
+        [self.filterControl.leadingAnchor constraintEqualToAnchor:root.leadingAnchor constant:20],
+        [self.filterControl.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-20],
         [self.filterControl.topAnchor constraintEqualToAnchor:self.summaryLabel.bottomAnchor constant:10],
-        [self.errorLabel.leadingAnchor constraintEqualToAnchor:root.leadingAnchor constant:16],
-        [self.errorLabel.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-16],
+        [self.errorLabel.leadingAnchor constraintEqualToAnchor:root.leadingAnchor constant:20],
+        [self.errorLabel.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-20],
         [self.errorLabel.topAnchor constraintEqualToAnchor:self.filterControl.bottomAnchor constant:6],
-        [listSurface.leadingAnchor constraintEqualToAnchor:root.leadingAnchor constant:10],
-        [listSurface.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-10],
+        [listSurface.leadingAnchor constraintEqualToAnchor:root.leadingAnchor],
+        [listSurface.trailingAnchor constraintEqualToAnchor:root.trailingAnchor],
         [listSurface.topAnchor constraintEqualToAnchor:self.errorLabel.bottomAnchor constant:8],
         [listSurface.bottomAnchor constraintEqualToAnchor:footer.topAnchor constant:-6],
         [scroll.leadingAnchor constraintEqualToAnchor:listSurface.leadingAnchor],
@@ -363,16 +376,16 @@ static NSStackView *CQExtensionHorizontal(void) {
         [document.trailingAnchor constraintEqualToAnchor:scroll.contentView.trailingAnchor],
         [document.topAnchor constraintEqualToAnchor:scroll.contentView.topAnchor],
         [document.widthAnchor constraintEqualToAnchor:scroll.contentView.widthAnchor],
-        [self.listStack.leadingAnchor constraintEqualToAnchor:document.leadingAnchor constant:14],
-        [self.listStack.trailingAnchor constraintEqualToAnchor:document.trailingAnchor constant:-14],
+        [self.listStack.leadingAnchor constraintEqualToAnchor:document.leadingAnchor constant:20],
+        [self.listStack.trailingAnchor constraintEqualToAnchor:document.trailingAnchor constant:-20],
         [self.listStack.topAnchor constraintEqualToAnchor:document.topAnchor constant:8],
         [self.listStack.bottomAnchor constraintEqualToAnchor:document.bottomAnchor constant:-14],
-        [footer.leadingAnchor constraintEqualToAnchor:root.leadingAnchor constant:10],
-        [footer.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-10],
-        [footer.bottomAnchor constraintEqualToAnchor:root.bottomAnchor constant:-10],
-        [footer.heightAnchor constraintEqualToConstant:58],
-        [footerStack.leadingAnchor constraintEqualToAnchor:footer.leadingAnchor constant:16],
-        [footerStack.trailingAnchor constraintEqualToAnchor:footer.trailingAnchor constant:-16],
+        [footer.leadingAnchor constraintEqualToAnchor:root.leadingAnchor],
+        [footer.trailingAnchor constraintEqualToAnchor:root.trailingAnchor],
+        [footer.bottomAnchor constraintEqualToAnchor:root.bottomAnchor],
+        [footer.heightAnchor constraintEqualToConstant:54],
+        [footerStack.leadingAnchor constraintEqualToAnchor:footer.leadingAnchor constant:20],
+        [footerStack.trailingAnchor constraintEqualToAnchor:footer.trailingAnchor constant:-20],
         [footerStack.centerYAnchor constraintEqualToAnchor:footer.centerYAnchor]
     ]];
     [self render];
@@ -440,6 +453,7 @@ static NSStackView *CQExtensionHorizontal(void) {
         self.summaryLabel.textColor = CQTheme.subtext;
     }
     self.errorLabel.hidden = self.manager.lastError.length == 0;
+    self.errorHeightConstraint.active = self.errorLabel.hidden;
     self.errorLabel.stringValue = self.manager.lastError ?: @"";
     self.updatedLabel.stringValue = self.manager.updatedAt
         ? [NSString stringWithFormat:@"%@ · %@",
@@ -477,7 +491,7 @@ static NSStackView *CQExtensionHorizontal(void) {
         if (sectionItems.count == 0) continue;
         NSString *title = kind == CQExtensionKindSkill ? @"Skill" : @"插件";
         NSTextField *section = CQLabel([NSString stringWithFormat:@"%@  %lu", title, (unsigned long)sectionItems.count],
-            [NSFont systemFontOfSize:11 weight:NSFontWeightSemibold], CQTheme.lavender);
+            [NSFont systemFontOfSize:11 weight:NSFontWeightSemibold], CQTheme.subtext);
         [self.listStack addArrangedSubview:section];
         [section.widthAnchor constraintEqualToAnchor:self.listStack.widthAnchor].active = YES;
         for (CQExtensionItem *item in sectionItems) {

@@ -422,7 +422,9 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
         maximumHeight = MAX(CQPanelMinimumUsableHeight, floor(maximumHeight));
         constrainedHeight = MIN(height, maximumHeight);
     }
-    [self.panel setContentSize:NSMakeSize(CQPopoverWidth, constrainedHeight)];
+    // AppKit uses the controller's preferred size when constraining its hosting window.
+    controller.preferredContentSize = NSMakeSize(CQPopoverWidth, constrainedHeight);
+    [self.panel setContentSize:controller.preferredContentSize];
     [self positionPanel];
 }
 

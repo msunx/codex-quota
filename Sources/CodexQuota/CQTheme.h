@@ -22,9 +22,7 @@ FOUNDATION_EXPORT NSTextField *CQLabel(NSString *text, NSFont *font, NSColor *co
 FOUNDATION_EXPORT NSButton *CQButton(NSString *title, NSString *symbolName, id target, SEL action);
 FOUNDATION_EXPORT NSButton *CQQuietButton(NSString *title, NSString *symbolName, id target, SEL action);
 FOUNDATION_EXPORT NSButton *CQPrimaryButton(NSString *title, NSString *symbolName, id target, SEL action);
-FOUNDATION_EXPORT NSView *CQSurface(CGFloat cornerRadius);
-FOUNDATION_EXPORT NSView *CQDashboardGlassSurface(CGFloat cornerRadius);
-FOUNDATION_EXPORT NSVisualEffectView *CQGlassView(NSVisualEffectMaterial material, CGFloat cornerRadius);
-FOUNDATION_EXPORT NSView *CQWindowGlassView(void);
+FOUNDATION_EXPORT NSView *CQFooterSurface(void);
+FOUNDATION_EXPORT NSView *CQPanelBackground(void);
 
 NS_ASSUME_NONNULL_END
