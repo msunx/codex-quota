@@ -63,6 +63,7 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
 @property(nonatomic, strong) CQDeepSeekClient *deepSeekClient;
 @property(nonatomic, strong) CQTaskMonitor *taskMonitor;
 @property(nonatomic, strong) CQTaskNotificationController *taskNotificationController;
+@property(nonatomic, strong, nullable) CQCodexTask *pendingNotificationTask;
 @property(nonatomic, strong) CQTaskSnapshot *taskSnapshot;
 @property(nonatomic, strong, nullable) CQQuotaSnapshot *snapshot;
 @property(nonatomic, strong, nullable) CQDeepSeekBalance *deepSeekBalance;
@@ -94,6 +95,22 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
 @end
 
 @implementation CQAppDelegate
+
+- (void)applicationWillFinishLaunching:(NSNotification *)notification {
+    (void)notification;
+    // Install the notification delegate before launch completes so clicks can relaunch the app.
+    self.taskNotificationController = [CQTaskNotificationController new];
+    __weak typeof(self) weakSelf = self;
+    self.taskNotificationController.taskSelectedHandler = ^(CQCodexTask *task) {
+        typeof(self) self = weakSelf;
+        if (!self) return;
+        if (!self.taskMonitor) {
+            self.pendingNotificationTask = task;
+            return;
+        }
+        [self focusCodexTask:task];
+    };
+}
 
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
     NSArray<NSString *> *arguments = NSProcessInfo.processInfo.arguments;
@@ -140,11 +157,7 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     [self configureMenuBar];
     [self configurePanel];
     [self configureSystemObservers];
-    self.taskNotificationController = [CQTaskNotificationController new];
     __weak typeof(self) weakSelf = self;
-    self.taskNotificationController.taskSelectedHandler = ^(CQCodexTask *task) {
-        [weakSelf focusCodexTask:task];
-    };
     [self.taskNotificationController start];
     self.taskSnapshot = [CQTaskSnapshot emptySnapshot];
     self.taskMonitor = [CQTaskMonitor new];
@@ -161,6 +174,11 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     [self render];
     if (self.providerMode == CQProviderModeDeepSeek) [self refreshDeepSeekBalance];
     else if (self.providerMode == CQProviderModeCodex) [self locateAndConnect];
+    if (self.pendingNotificationTask) {
+        CQCodexTask *task = self.pendingNotificationTask;
+        self.pendingNotificationTask = nil;
+        [self focusCodexTask:task];
+    }
     if (migratedHistoryConfiguration) {
         dispatch_async(dispatch_get_main_queue(), ^{
             NSString *provider = self.providerMode == CQProviderModeDeepSeek ? @"DeepSeek" : @"GLM";
@@ -720,34 +738,47 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
 }
 
 - (void)focusCodexTask:(CQCodexTask *)task {
-    if (task.state == CQTaskStateCompletedUnread) [self.taskMonitor markTaskViewed:task];
-    NSArray<NSRunningApplication *> *applications = [self runningCodexApplications];
-    if (applications.count > 0) {
-        [applications.firstObject activateWithOptions:0];
-        return;
-    }
+    [self.panel orderOut:nil];
     NSURL *url = [self codexApplicationURL];
     if (!url) {
-        self.errorMessage = @"未找到 Codex / ChatGPT 客户端";
-        [self render];
+        [self showCodexTaskOpenError:@"未找到 Codex / ChatGPT 客户端"];
         return;
     }
-    NSWorkspaceOpenConfiguration *configuration = [NSWorkspaceOpenConfiguration configuration];
-    configuration.activates = YES;
+    NSWorkspaceOpenConfiguration *configuration = [self codexOpenConfigurationForApplicationURL:url];
     __weak typeof(self) weakSelf = self;
-    [NSWorkspace.sharedWorkspace openApplicationAtURL:url
-                                        configuration:configuration
-                                    completionHandler:^(NSRunningApplication *application, NSError *error) {
+    void (^completionHandler)(NSRunningApplication *, NSError *) = ^(NSRunningApplication *application, NSError *error) {
         (void)application;
-        if (!error) return;
         dispatch_async(dispatch_get_main_queue(), ^{
-            weakSelf.errorMessage = error.localizedDescription ?: @"无法打开 Codex";
-            [weakSelf render];
+            typeof(self) self = weakSelf;
+            if (!self) return;
+            if (error) {
+                os_log_error(CQLogger(), "Failed to open Codex task: %{public}@", error.localizedDescription);
+                [self showCodexTaskOpenError:error.localizedDescription ?: @"无法打开 Codex 会话"];
+                return;
+            }
+            if (task.state == CQTaskStateCompletedUnread) [self.taskMonitor markTaskViewed:task];
         });
-    }];
+    };
+    NSString *threadID = [task.threadID stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (threadID.length == 0) {
+        [NSWorkspace.sharedWorkspace openApplicationAtURL:url configuration:configuration completionHandler:completionHandler];
+        return;
+    }
+    NSCharacterSet *pathCharacters = [NSCharacterSet characterSetWithCharactersInString:@"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"];
+    NSString *encodedThreadID = [threadID stringByAddingPercentEncodingWithAllowedCharacters:pathCharacters];
+    NSURL *threadURL = [NSURL URLWithString:[@"codex://threads/" stringByAppendingString:encodedThreadID]];
+    [NSWorkspace.sharedWorkspace openURLs:@[threadURL] withApplicationAtURL:url configuration:configuration completionHandler:completionHandler];
 }
 
-- (void)openCodexApplicationAtURL:(NSURL *)url {
+- (void)showCodexTaskOpenError:(NSString *)message {
+    self.errorMessage = message;
+    [self render];
+    [self showQuotaPanel];
+    [self positionPanel];
+    [self.panel makeKeyAndOrderFront:nil];
+}
+
+- (NSWorkspaceOpenConfiguration *)codexOpenConfigurationForApplicationURL:(NSURL *)url {
     NSWorkspaceOpenConfiguration *configuration = [NSWorkspaceOpenConfiguration configuration];
     configuration.activates = YES;
     NSURL *bridgeURL = [NSBundle.mainBundle.bundleURL
@@ -761,6 +792,11 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
             @"CODEX_APP_SERVER_FORCE_CLI": @"1"
         };
     }
+    return configuration;
+}
+
+- (void)openCodexApplicationAtURL:(NSURL *)url {
+    NSWorkspaceOpenConfiguration *configuration = [self codexOpenConfigurationForApplicationURL:url];
     __weak typeof(self) weakSelf = self;
     [NSWorkspace.sharedWorkspace openApplicationAtURL:url
                                         configuration:configuration

@@ -32,6 +32,7 @@ static os_log_t CQTaskNotificationLogger(void) {
     self = [super init];
     if (!self) return nil;
     _notificationCenter = UNUserNotificationCenter.currentNotificationCenter;
+    _notificationCenter.delegate = self;
     _waitingTurnIDs = [NSSet set];
     _completedTurnIDs = [NSSet set];
     return self;
@@ -43,7 +44,6 @@ static os_log_t CQTaskNotificationLogger(void) {
     if (![defaults objectForKey:CQTaskNotificationBaselineKey]) {
         [defaults setDouble:floor(NSDate.date.timeIntervalSince1970) forKey:CQTaskNotificationBaselineKey];
     }
-    self.notificationCenter.delegate = self;
     __weak typeof(self) weakSelf = self;
     [self.notificationCenter requestAuthorizationWithOptions:UNAuthorizationOptionAlert | UNAuthorizationOptionSound
                                            completionHandler:^(BOOL granted, NSError *error) {
@@ -192,6 +192,11 @@ static os_log_t CQTaskNotificationLogger(void) {
 didReceiveNotificationResponse:(UNNotificationResponse *)response
          withCompletionHandler:(void (^)(void))completionHandler {
     (void)center;
+    if (![response.actionIdentifier isEqualToString:UNNotificationDefaultActionIdentifier]) {
+        completionHandler();
+        return;
+    }
+    os_log_info(CQTaskNotificationLogger(), "Opening Codex task from notification");
     CQCodexTask *task = [self taskFromNotification:response.notification];
     dispatch_async(dispatch_get_main_queue(), ^{
         if (self.taskSelectedHandler) self.taskSelectedHandler(task);

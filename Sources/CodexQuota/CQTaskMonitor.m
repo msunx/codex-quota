@@ -1,4 +1,5 @@
 #import "CQTaskMonitor.h"
+#import "CQApprovalMonitor.h"
 #import <sqlite3.h>
 
 static NSString * const CQTaskMonitorBaselineKey = @"TaskMonitorCompletionBaseline";
@@ -51,6 +52,7 @@ static NSTimeInterval const CQTaskRetentionInterval = 7 * 24 * 60 * 60;
 @property(nonatomic) dispatch_queue_t queryQueue;
 @property(nonatomic) BOOL queryInFlight;
 @property(nonatomic, copy) NSString *lastDeliveredSignature;
+@property(nonatomic, strong) CQApprovalMonitor *approvalMonitor;
 @end
 
 @implementation CQTaskMonitor
@@ -61,6 +63,7 @@ static NSTimeInterval const CQTaskRetentionInterval = 7 * 24 * 60 * 60;
     _snapshot = [CQTaskSnapshot emptySnapshot];
     _queryQueue = dispatch_queue_create("com.muyang.codexquota.tasks", DISPATCH_QUEUE_SERIAL);
     _lastDeliveredSignature = @"";
+    _approvalMonitor = [[CQApprovalMonitor alloc] initWithQueue:_queryQueue];
     return self;
 }
 
@@ -80,6 +83,7 @@ static NSTimeInterval const CQTaskRetentionInterval = 7 * 24 * 60 * 60;
 - (void)stop {
     [self.timer invalidate];
     self.timer = nil;
+    dispatch_async(self.queryQueue, ^{ [self.approvalMonitor stop]; });
 }
 
 - (void)timerFired:(NSTimer *)timer {
@@ -202,10 +206,16 @@ static NSTimeInterval const CQTaskRetentionInterval = 7 * 24 * 60 * 60;
 - (CQTaskSnapshot *)loadSnapshot {
     NSString *historyPath = [self freshestDatabaseNamedLike:@"thread_history_"];
     NSString *statePath = [self freshestDatabaseNamedLike:@"state_"];
-    if (historyPath.length == 0 || statePath.length == 0) return [CQTaskSnapshot emptySnapshot];
+    if (historyPath.length == 0 || statePath.length == 0) {
+        [self.approvalMonitor stop];
+        return [CQTaskSnapshot emptySnapshot];
+    }
 
     NSDictionary<NSString *, NSDictionary *> *metadata = [self loadThreadMetadataFromPath:statePath];
-    if (metadata.count == 0) return [CQTaskSnapshot emptySnapshot];
+    if (metadata.count == 0) {
+        [self.approvalMonitor stop];
+        return [CQTaskSnapshot emptySnapshot];
+    }
     NSMutableDictionary<NSString *, NSNumber *> *viewed = [self viewedTurnsPrunedAtDate:NSDate.date];
     NSTimeInterval baseline = [NSUserDefaults.standardUserDefaults doubleForKey:CQTaskMonitorBaselineKey];
     NSTimeInterval cutoff = MAX(baseline, NSDate.date.timeIntervalSince1970 - CQTaskRetentionInterval);
@@ -213,6 +223,7 @@ static NSTimeInterval const CQTaskRetentionInterval = 7 * 24 * 60 * 60;
     sqlite3 *database = NULL;
     if (sqlite3_open_v2(historyPath.fileSystemRepresentation, &database, SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX, NULL) != SQLITE_OK) {
         if (database) sqlite3_close(database);
+        [self.approvalMonitor stop];
         return [CQTaskSnapshot emptySnapshot];
     }
     sqlite3_busy_timeout(database, 250);
@@ -255,10 +266,17 @@ static NSTimeInterval const CQTaskRetentionInterval = 7 * 24 * 60 * 60;
     sqlite3_close(database);
 
     CQTaskSnapshot *snapshot = [CQTaskSnapshot emptySnapshot];
-    // Waiting-for-approval is intentionally left empty until Codex exposes an exact cross-process signal.
-    // An in-progress persisted turn is not enough evidence to label a task as awaiting approval.
-    snapshot.waitingForApprovalTasks = @[];
-    snapshot.runningTasks = running;
+    NSSet<NSString *> *waitingTurnIDs = [self.approvalMonitor waitingTurnIDsForTasks:running];
+    NSMutableArray<CQCodexTask *> *waiting = [NSMutableArray array];
+    NSMutableArray<CQCodexTask *> *executing = [NSMutableArray array];
+    for (CQCodexTask *task in running) {
+        if ([waitingTurnIDs containsObject:task.turnID]) {
+            task.state = CQTaskStateWaitingForApproval;
+            [waiting addObject:task];
+        } else [executing addObject:task];
+    }
+    snapshot.waitingForApprovalTasks = waiting;
+    snapshot.runningTasks = executing;
     snapshot.unreadCompletedTasks = completed;
     return snapshot;
 }
