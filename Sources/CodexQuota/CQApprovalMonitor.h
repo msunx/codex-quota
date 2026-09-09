@@ -7,6 +7,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface CQApprovalMonitor : NSObject
 - (instancetype)initWithQueue:(dispatch_queue_t)queue;
 - (NSSet<NSString *> *)waitingTurnIDsForTasks:(NSArray<CQCodexTask *> *)tasks;
+- (BOOL)isTaskConfirmedIdle:(CQCodexTask *)task;
 - (void)stop;
 @end
 

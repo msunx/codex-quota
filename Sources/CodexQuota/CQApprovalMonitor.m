@@ -284,6 +284,13 @@ static BOOL CQApplyApprovalPatch(NSMutableDictionary *state, NSDictionary *patch
     }
 }
 
+- (BOOL)isTaskConfirmedIdle:(CQCodexTask *)task {
+    if (![self.turnsByThread[task.threadID] isEqual:task.turnID]) return NO;
+    NSDictionary *projection = self.states[task.threadID][@"projection"];
+    NSDictionary *status = CQApprovalDictionary(projection[@"threadRuntimeStatus"]);
+    return [status[@"type"] isEqual:@"idle"] && CQApprovalArray(projection[@"requests"]).count == 0;
+}
+
 - (NSSet<NSString *> *)waitingTurnIDsForTasks:(NSArray<CQCodexTask *> *)tasks {
     NSMutableDictionary *turns = [NSMutableDictionary dictionary];
     for (CQCodexTask *task in tasks) {

@@ -273,7 +273,10 @@ static NSTimeInterval const CQTaskRetentionInterval = 7 * 24 * 60 * 60;
         if ([waitingTurnIDs containsObject:task.turnID]) {
             task.state = CQTaskStateWaitingForApproval;
             [waiting addObject:task];
-        } else [executing addObject:task];
+        } else if (![self.approvalMonitor isTaskConfirmedIdle:task]) {
+            // A persisted in-progress turn can survive an interrupted session; the live idle state takes precedence.
+            [executing addObject:task];
+        }
     }
     snapshot.waitingForApprovalTasks = waiting;
     snapshot.runningTasks = executing;
