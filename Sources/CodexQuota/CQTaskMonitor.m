@@ -1,5 +1,6 @@
 #import "CQTaskMonitor.h"
 #import "CQApprovalMonitor.h"
+#import "CQTaskRolloutReader.h"
 #import <sqlite3.h>
 
 static NSString * const CQTaskMonitorBaselineKey = @"TaskMonitorCompletionBaseline";
@@ -53,6 +54,7 @@ static NSTimeInterval const CQTaskRetentionInterval = 7 * 24 * 60 * 60;
 @property(nonatomic) BOOL queryInFlight;
 @property(nonatomic, copy) NSString *lastDeliveredSignature;
 @property(nonatomic, strong) CQApprovalMonitor *approvalMonitor;
+@property(nonatomic, strong) CQTaskRolloutReader *rolloutReader;
 @end
 
 @implementation CQTaskMonitor
@@ -64,6 +66,7 @@ static NSTimeInterval const CQTaskRetentionInterval = 7 * 24 * 60 * 60;
     _queryQueue = dispatch_queue_create("com.muyang.codexquota.tasks", DISPATCH_QUEUE_SERIAL);
     _lastDeliveredSignature = @"";
     _approvalMonitor = [[CQApprovalMonitor alloc] initWithQueue:_queryQueue];
+    _rolloutReader = [CQTaskRolloutReader new];
     return self;
 }
 
@@ -185,17 +188,25 @@ static NSTimeInterval const CQTaskRetentionInterval = 7 * 24 * 60 * 60;
         return @{};
     }
     sqlite3_busy_timeout(database, 250);
-    NSString *sql = @"SELECT id, COALESCE(NULLIF(name, ''), NULLIF(title, ''), NULLIF(preview, ''), '未命名任务'), cwd "
-        "FROM threads WHERE archived = 0 ORDER BY updated_at DESC LIMIT 500";
+    NSString *sql = @"SELECT id, COALESCE(NULLIF(name, ''), NULLIF(title, ''), NULLIF(preview, ''), '未命名任务'), cwd, source, agent_path, rollout_path "
+        "FROM threads WHERE archived = 0 AND NOT EXISTS (SELECT 1 FROM thread_spawn_edges WHERE child_thread_id = threads.id)";
     sqlite3_stmt *statement = NULL;
     NSMutableDictionary<NSString *, NSDictionary *> *metadata = [NSMutableDictionary dictionary];
     if (sqlite3_prepare_v2(database, sql.UTF8String, -1, &statement, NULL) == SQLITE_OK) {
         while (sqlite3_step(statement) == SQLITE_ROW) {
             NSString *threadID = [self stringFromColumn:statement index:0];
             if (threadID.length == 0) continue;
+            NSString *source = [self stringFromColumn:statement index:3] ?: @"";
+            NSString *agentPath = [self stringFromColumn:statement index:4] ?: @"";
+            if ([source.lowercaseString hasPrefix:@"subagent"] || [agentPath hasPrefix:@"/root/"]) continue;
+            if ([source hasPrefix:@"{"]) {
+                id sourceDetails = [NSJSONSerialization JSONObjectWithData:[source dataUsingEncoding:NSUTF8StringEncoding] options:0 error:nil];
+                if ([sourceDetails isKindOfClass:NSDictionary.class] && sourceDetails[@"subagent"]) continue;
+            }
             NSString *title = [self stringFromColumn:statement index:1] ?: @"未命名任务";
             NSString *cwd = [self stringFromColumn:statement index:2] ?: @"";
-            metadata[threadID] = @{ @"title": title, @"cwd": cwd };
+            NSString *rolloutPath = [self stringFromColumn:statement index:5] ?: @"";
+            metadata[threadID] = @{ @"title": title, @"cwd": cwd, @"rolloutPath": rolloutPath };
         }
     }
     if (statement) sqlite3_finalize(statement);
@@ -203,53 +214,73 @@ static NSTimeInterval const CQTaskRetentionInterval = 7 * 24 * 60 * 60;
     return metadata;
 }
 
-- (CQTaskSnapshot *)loadSnapshot {
-    NSString *historyPath = [self freshestDatabaseNamedLike:@"thread_history_"];
-    NSString *statePath = [self freshestDatabaseNamedLike:@"state_"];
-    if (historyPath.length == 0 || statePath.length == 0) {
-        [self.approvalMonitor stop];
-        return [CQTaskSnapshot emptySnapshot];
-    }
-
-    NSDictionary<NSString *, NSDictionary *> *metadata = [self loadThreadMetadataFromPath:statePath];
-    if (metadata.count == 0) {
-        [self.approvalMonitor stop];
-        return [CQTaskSnapshot emptySnapshot];
-    }
-    NSMutableDictionary<NSString *, NSNumber *> *viewed = [self viewedTurnsPrunedAtDate:NSDate.date];
-    NSTimeInterval baseline = [NSUserDefaults.standardUserDefaults doubleForKey:CQTaskMonitorBaselineKey];
-    NSTimeInterval cutoff = MAX(baseline, NSDate.date.timeIntervalSince1970 - CQTaskRetentionInterval);
-
+- (NSDictionary<NSString *, NSDictionary *> *)loadLatestTurnsFromPath:(NSString *)historyPath {
+    if (historyPath.length == 0) return @{};
     sqlite3 *database = NULL;
     if (sqlite3_open_v2(historyPath.fileSystemRepresentation, &database, SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX, NULL) != SQLITE_OK) {
         if (database) sqlite3_close(database);
-        [self.approvalMonitor stop];
-        return [CQTaskSnapshot emptySnapshot];
+        return @{};
     }
     sqlite3_busy_timeout(database, 250);
     NSString *sql = @"SELECT turns.thread_id, turns.turn_id, turns.status, turns.started_at, turns.completed_at "
         "FROM thread_turns AS turns INNER JOIN ("
         "SELECT thread_id, MAX(rollout_ordinal) AS latest_ordinal FROM thread_turns GROUP BY thread_id"
-        ") AS latest ON latest.thread_id = turns.thread_id AND latest.latest_ordinal = turns.rollout_ordinal "
-        "WHERE turns.status = 'inProgress' OR (turns.status = 'completed' AND turns.completed_at >= ?) "
-        "ORDER BY COALESCE(turns.completed_at, turns.started_at) DESC LIMIT 200";
+        ") AS latest ON latest.thread_id = turns.thread_id AND latest.latest_ordinal = turns.rollout_ordinal";
     sqlite3_stmt *statement = NULL;
-    NSMutableArray<CQCodexTask *> *running = [NSMutableArray array];
-    NSMutableArray<CQCodexTask *> *completed = [NSMutableArray array];
+    NSMutableDictionary *turns = [NSMutableDictionary dictionary];
     if (sqlite3_prepare_v2(database, sql.UTF8String, -1, &statement, NULL) == SQLITE_OK) {
-        sqlite3_bind_int64(statement, 1, (sqlite3_int64)floor(cutoff));
         while (sqlite3_step(statement) == SQLITE_ROW) {
             NSString *threadID = [self stringFromColumn:statement index:0];
             NSString *turnID = [self stringFromColumn:statement index:1];
             NSString *status = [self stringFromColumn:statement index:2];
+            if (threadID.length == 0 || turnID.length == 0 || status.length == 0) continue;
+            NSMutableDictionary *turn = [@{@"turnID": turnID, @"status": status} mutableCopy];
+            if (sqlite3_column_type(statement, 3) != SQLITE_NULL) turn[@"startedAt"] = @(sqlite3_column_int64(statement, 3));
+            if (sqlite3_column_type(statement, 4) != SQLITE_NULL) turn[@"completedAt"] = @(sqlite3_column_int64(statement, 4));
+            turn[@"eventAt"] = turn[@"completedAt"] ?: turn[@"startedAt"] ?: @0;
+            turns[threadID] = turn;
+        }
+    }
+    if (statement) sqlite3_finalize(statement);
+    sqlite3_close(database);
+    return turns;
+}
+
+- (CQTaskSnapshot *)loadSnapshot {
+    NSString *statePath = [self freshestDatabaseNamedLike:@"state_"];
+    NSDictionary<NSString *, NSDictionary *> *metadata = statePath.length ? [self loadThreadMetadataFromPath:statePath] : @{};
+    [self.rolloutReader retainThreads:[NSSet setWithArray:metadata.allKeys]];
+    if (metadata.count == 0) {
+        [self.approvalMonitor stop];
+        return [CQTaskSnapshot emptySnapshot];
+    }
+    NSDictionary *indexedTurns = [self loadLatestTurnsFromPath:[self freshestDatabaseNamedLike:@"thread_history_"]];
+    NSDate *now = NSDate.date;
+    NSMutableDictionary<NSString *, NSNumber *> *viewed = [self viewedTurnsPrunedAtDate:now];
+    NSTimeInterval baseline = [NSUserDefaults.standardUserDefaults doubleForKey:CQTaskMonitorBaselineKey];
+    NSTimeInterval cutoff = MAX(baseline, now.timeIntervalSince1970 - CQTaskRetentionInterval);
+    NSMutableArray<CQCodexTask *> *running = [NSMutableArray array];
+    NSMutableArray<CQCodexTask *> *completed = [NSMutableArray array];
+    for (NSString *threadID in metadata) {
+        @autoreleasepool {
             NSDictionary *thread = metadata[threadID];
-            if (!thread || turnID.length == 0) continue;
+            NSDictionary *turn = indexedTurns[threadID];
+            NSDictionary *rolloutTurn = [self.rolloutReader latestTurnForThread:threadID rolloutPath:thread[@"rolloutPath"]];
+            // Resumed/compacted rollouts can advance while the history projection still points into an older file.
+            BOOL indexedTurnFinished = [turn[@"turnID"] isEqual:rolloutTurn[@"turnID"]] && ![turn[@"status"] isEqual:@"inProgress"] && [rolloutTurn[@"status"] isEqual:@"inProgress"];
+            if (rolloutTurn && !indexedTurnFinished && (!turn || [rolloutTurn[@"eventAt"] doubleValue] >= [turn[@"eventAt"] doubleValue])) {
+                NSMutableDictionary *latest = [rolloutTurn mutableCopy];
+                if (!latest[@"startedAt"] && [turn[@"turnID"] isEqual:latest[@"turnID"]]) latest[@"startedAt"] = turn[@"startedAt"];
+                turn = latest;
+            }
+            NSString *status = turn[@"status"];
+            NSString *turnID = turn[@"turnID"];
             BOOL isCompleted = [status isEqualToString:@"completed"];
-            if (isCompleted && viewed[turnID]) continue;
-            NSTimeInterval startedAt = sqlite3_column_type(statement, 3) == SQLITE_NULL
-                ? NSDate.date.timeIntervalSince1970 : sqlite3_column_int64(statement, 3);
-            NSTimeInterval completedAt = sqlite3_column_type(statement, 4) == SQLITE_NULL
-                ? 0 : sqlite3_column_int64(statement, 4);
+            if (![status isEqualToString:@"inProgress"] && !isCompleted) continue;
+            NSTimeInterval completedAt = [turn[@"completedAt"] doubleValue];
+            if (isCompleted && (completedAt < cutoff || viewed[turnID])) continue;
+            NSTimeInterval startedAt = [turn[@"startedAt"] doubleValue];
+            if (startedAt <= 0) startedAt = completedAt > 0 ? completedAt : now.timeIntervalSince1970;
             CQCodexTask *task = [CQCodexTask new];
             task.threadID = threadID;
             task.turnID = turnID;
@@ -262,8 +293,12 @@ static NSTimeInterval const CQTaskRetentionInterval = 7 * 24 * 60 * 60;
             [(isCompleted ? completed : running) addObject:task];
         }
     }
-    if (statement) sqlite3_finalize(statement);
-    sqlite3_close(database);
+    NSComparator newestFirst = ^NSComparisonResult(CQCodexTask *left, CQCodexTask *right) {
+        NSComparisonResult result = [(right.completedAt ?: right.startedAt) compare:(left.completedAt ?: left.startedAt)];
+        return result == NSOrderedSame ? [left.threadID compare:right.threadID] : result;
+    };
+    [running sortUsingComparator:newestFirst];
+    [completed sortUsingComparator:newestFirst];
 
     CQTaskSnapshot *snapshot = [CQTaskSnapshot emptySnapshot];
     NSSet<NSString *> *waitingTurnIDs = [self.approvalMonitor waitingTurnIDsForTasks:running];
