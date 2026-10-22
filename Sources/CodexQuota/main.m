@@ -8,6 +8,7 @@
 #import "CQExtensionManagerController.h"
 #import "CQExtensions.h"
 #import "CQPopoverController.h"
+#import "CQNotificationSettingsController.h"
 #import "CQTaskMonitor.h"
 #import "CQTaskNotificationController.h"
 #import "CQTheme.h"
@@ -38,7 +39,8 @@ typedef NS_ENUM(NSInteger, CQConnectionState) {
 
 typedef NS_ENUM(NSInteger, CQPopoverPage) {
     CQPopoverPageQuota,
-    CQPopoverPageExtensions
+    CQPopoverPageExtensions,
+    CQPopoverPageNotificationSettings
 };
 
 @interface CQGlassPanel : NSPanel
@@ -58,6 +60,7 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
 @property(nonatomic, strong) CQPopoverController *popoverController;
 @property(nonatomic, strong) CQExtensionManager *extensionManager;
 @property(nonatomic, strong) CQExtensionManagerController *extensionController;
+@property(nonatomic, strong) CQNotificationSettingsController *notificationSettingsController;
 @property(nonatomic, strong, nullable) CQCodexClient *client;
 @property(nonatomic, strong) CQCodexConfigManager *configManager;
 @property(nonatomic, strong) CQDeepSeekClient *deepSeekClient;
@@ -118,6 +121,7 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
         || [arguments containsObject:@"--preview-deepseek"]
         || [arguments containsObject:@"--preview-glm"]
         || [arguments containsObject:@"--preview-api-key"]
+        || [arguments containsObject:@"--preview-notifications"]
         || [arguments containsObject:@"--preview-extensions"]) {
         [self configureApplicationMenu];
         [self showPreviewWindow];
@@ -207,6 +211,14 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     [self.previewWindow orderFrontRegardless];
     [NSApp activateIgnoringOtherApps:YES];
 
+    if ([NSProcessInfo.processInfo.arguments containsObject:@"--preview-notifications"]) {
+        self.notificationSettingsController = [[CQNotificationSettingsController alloc] initWithBarkService:nil];
+        self.previewWindow.contentViewController = self.notificationSettingsController;
+        (void)self.notificationSettingsController.view;
+        [self.previewWindow setContentSize:self.notificationSettingsController.preferredContentSize];
+        self.previewWindow.title = @"Codex Quota · 通知设置预览";
+        return;
+    }
     BOOL previewExtensions = [NSProcessInfo.processInfo.arguments containsObject:@"--preview-extensions"];
     if (previewExtensions) {
         self.extensionManager = [[CQExtensionManager alloc] initWithCodexURL:[self locateCodex]];
@@ -385,6 +397,7 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     };
     self.popoverController.changeAPIKeyHandler = ^{ [weakSelf promptToChangeExternalAPIKey]; };
     self.popoverController.extensionManagerHandler = ^{ [weakSelf showExtensionManager]; };
+    self.popoverController.notificationSettingsHandler = ^{ [weakSelf showNotificationSettings]; };
     self.popoverController.launchAtLoginHandler = ^(BOOL enabled) { [weakSelf setLaunchAtLogin:enabled]; };
     self.popoverController.taskSelectedHandler = ^(CQCodexTask *task) { [weakSelf focusCodexTask:task]; };
     self.popoverController.markAllTasksViewedHandler = ^{ [weakSelf.taskMonitor markAllCompletedViewed]; };
@@ -418,6 +431,8 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     self.extensionManager = [[CQExtensionManager alloc] initWithCodexURL:extensionCodexURL];
     self.extensionController = [[CQExtensionManagerController alloc] initWithManager:self.extensionManager];
     self.extensionController.backHandler = ^{ [weakSelf showQuotaPanel]; };
+    self.notificationSettingsController = [[CQNotificationSettingsController alloc] initWithBarkService:self.taskNotificationController.barkService];
+    self.notificationSettingsController.backHandler = ^{ [weakSelf showQuotaPanel]; };
     [self.extensionManager startPeriodicChecks];
 }
 
@@ -511,6 +526,7 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
         return;
     }
     if (self.currentPopoverPage == CQPopoverPageExtensions) [self showExtensionManager];
+    else if (self.currentPopoverPage == CQPopoverPageNotificationSettings) [self showNotificationSettings];
     else [self showQuotaPanel];
     [self positionPanel];
     [self.panel makeKeyAndOrderFront:nil];
@@ -532,6 +548,12 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     (void)self.popoverController.view;
     CGFloat height = self.popoverController.preferredContentSize.height;
     [self setPanelContentViewController:self.popoverController height:height];
+}
+
+- (void)showNotificationSettings {
+    self.currentPopoverPage = CQPopoverPageNotificationSettings;
+    (void)self.notificationSettingsController.view;
+    [self setPanelContentViewController:self.notificationSettingsController height:340];
 }
 
 - (void)windowDidResignKey:(NSNotification *)notification {

@@ -19,6 +19,7 @@ static os_log_t CQTaskNotificationLogger(void) {
 
 @interface CQTaskNotificationController () <UNUserNotificationCenterDelegate>
 @property(nonatomic, strong) UNUserNotificationCenter *notificationCenter;
+@property(nonatomic, strong) CQBarkNotificationService *barkService;
 @property(nonatomic, copy) NSSet<NSString *> *waitingTurnIDs;
 @property(nonatomic, copy) NSSet<NSString *> *completedTurnIDs;
 @property(nonatomic, strong, nullable) CQTaskSnapshot *pendingSnapshot;
@@ -33,6 +34,7 @@ static os_log_t CQTaskNotificationLogger(void) {
     if (!self) return nil;
     _notificationCenter = UNUserNotificationCenter.currentNotificationCenter;
     _notificationCenter.delegate = self;
+    _barkService = [CQBarkNotificationService new];
     _waitingTurnIDs = [NSSet set];
     _completedTurnIDs = [NSSet set];
     return self;
@@ -62,6 +64,7 @@ static os_log_t CQTaskNotificationLogger(void) {
 
 - (void)handleSnapshot:(CQTaskSnapshot *)snapshot {
     NSAssert(NSThread.isMainThread, @"CQTaskNotificationController snapshots must be handled on the main thread");
+    [self.barkService handleSnapshot:snapshot];
     if (!self.authorizationResolved) {
         self.pendingSnapshot = snapshot;
         return;

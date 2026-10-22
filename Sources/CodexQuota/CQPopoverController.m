@@ -665,6 +665,12 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
     NSView *primarySpacer = [NSView new];
     [primarySpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
     [primaryRow addArrangedSubview:primarySpacer];
+    NSButton *settings = CQQuietButton(@"", @"gearshape", self, @selector(showNotificationSettings:));
+    settings.imagePosition = NSImageOnly;
+    settings.toolTip = @"通知设置 · Bark 推送到 iPhone";
+    settings.accessibilityLabel = @"通知设置";
+    [settings.widthAnchor constraintEqualToConstant:26].active = YES;
+    [primaryRow addArrangedSubview:settings];
     [primaryRow addArrangedSubview:extensions];
     self.refreshButton = CQQuietButton(@"刷新", @"arrow.clockwise", self, @selector(refresh:));
     [self.refreshButton.widthAnchor constraintGreaterThanOrEqualToConstant:54].active = YES;
@@ -974,6 +980,7 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
 }
 - (void)changeAPIKey:(id)sender { if (self.changeAPIKeyHandler) self.changeAPIKeyHandler(); }
 - (void)showExtensions:(id)sender { if (self.extensionManagerHandler) self.extensionManagerHandler(); }
+- (void)showNotificationSettings:(id)sender { if (self.notificationSettingsHandler) self.notificationSettingsHandler(); }
 - (void)taskSelected:(CQTaskRowButton *)sender { if (self.taskSelectedHandler) self.taskSelectedHandler(sender.task); }
 - (void)markAllTasksViewed:(id)sender { (void)sender; if (self.markAllTasksViewedHandler) self.markAllTasksViewedHandler(); }
 - (void)toggleLaunchAtLogin:(NSButton *)sender {

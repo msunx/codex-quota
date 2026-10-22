@@ -12,6 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy, nullable) void (^modelChangeHandler)(NSString *model);
 @property(nonatomic, copy, nullable) void (^changeAPIKeyHandler)(void);
 @property(nonatomic, copy, nullable) void (^extensionManagerHandler)(void);
+@property(nonatomic, copy, nullable) void (^notificationSettingsHandler)(void);
 @property(nonatomic, copy, nullable) void (^launchAtLoginHandler)(BOOL enabled);
 @property(nonatomic, copy, nullable) void (^taskSelectedHandler)(CQCodexTask *task);
 @property(nonatomic, copy, nullable) void (^markAllTasksViewedHandler)(void);
