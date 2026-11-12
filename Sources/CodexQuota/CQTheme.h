@@ -16,6 +16,12 @@ NS_ASSUME_NONNULL_BEGIN
 + (NSColor *)yellow;
 + (NSColor *)red;
 + (NSColor *)colorForRemaining:(double)remaining;
++ (NSColor *)menuBarColorForRemaining:(double)remaining;
++ (NSColor *)menuBarText;
++ (NSColor *)menuBarTrack;
++ (NSColor *)menuBarAccent;
++ (NSColor *)menuBarGreen;
++ (NSColor *)menuBarYellow;
 @end
 
 FOUNDATION_EXPORT NSTextField *CQLabel(NSString *text, NSFont *font, NSColor *color);

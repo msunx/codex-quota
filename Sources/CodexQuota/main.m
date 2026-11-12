@@ -13,6 +13,7 @@
 #import "CQTaskNotificationController.h"
 #import "CQTheme.h"
 
+#import "CQMenuBarStatusView.h"
 static NSString * const CQSavedCodexPathKey = @"CodexExecutablePath";
 static CGFloat const CQPopoverWidth = 360.0;
 static CGFloat const CQPanelAnchorGap = 6.0;
@@ -57,6 +58,7 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
 @interface CQAppDelegate : NSObject <NSApplicationDelegate, NSWindowDelegate>
 @property(nonatomic, strong) NSStatusItem *statusItem;
 @property(nonatomic, strong) CQGlassPanel *panel;
+@property(nonatomic, strong) CQMenuBarStatusView *statusView;
 @property(nonatomic, strong) CQPopoverController *popoverController;
 @property(nonatomic, strong) CQExtensionManager *extensionManager;
 @property(nonatomic, strong) CQExtensionManagerController *extensionController;
@@ -371,16 +373,13 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     button.target = self;
     button.action = @selector(togglePopover:);
     button.toolTip = @"Codex Quota";
-    if (@available(macOS 13.0, *)) {
-        NSImage *image = [NSImage imageWithSystemSymbolName:@"gauge.with.dots.needle.67percent"
-                                   accessibilityDescription:@"Codex 剩余额度"];
-        image.template = YES;
-        button.image = image;
-        button.imagePosition = NSImageLeading;
-    }
-    button.title = @" …";
-    button.font = [NSFont monospacedDigitSystemFontOfSize:12 weight:NSFontWeightMedium];
-    button.accessibilityLabel = @"Codex 剩余额度";
+    button.title = @"";
+    self.statusView = [[CQMenuBarStatusView alloc] initWithFrame:NSMakeRect(6, 0, 0, NSHeight(button.bounds))];
+    self.statusView.autoresizingMask = NSViewHeightSizable;
+    [button addSubview:self.statusView];
+    self.statusItem.length = self.statusView.preferredWidth + 12;
+    self.statusView.frame = NSMakeRect(6, 0, self.statusView.preferredWidth, NSHeight(button.bounds));
+    button.accessibilityLabel = @"额度与任务状态";
 }
 
 - (void)configurePanel {
@@ -1285,12 +1284,14 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
 
 - (void)render {
     NSString *metric = nil;
-    NSString *provider = self.providerMode == CQProviderModeDeepSeek ? @"DeepSeek"
-        : (self.providerMode == CQProviderModeGLM ? @"GLM" : @"Codex");
+    double remainingPercent = NAN;
     if (self.providerMode == CQProviderModeCodex
         && self.connectionState == CQConnectionStateConnected && self.snapshot) {
         double minimum = self.snapshot.minimumRemainingPercent;
-        if (!isnan(minimum)) metric = [NSString stringWithFormat:@"%.0f%%", minimum];
+        if (isfinite(minimum)) {
+            metric = [NSString stringWithFormat:@"%.0f%%", minimum];
+            remainingPercent = minimum;
+        }
     } else if (self.providerMode == CQProviderModeDeepSeek
                && self.connectionState == CQConnectionStateConnected && self.deepSeekBalance) {
         CQDeepSeekBalanceInfo *info = self.deepSeekBalance.preferredBalanceInfo;
@@ -1299,8 +1300,7 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
                 : ([info.currency isEqualToString:@"USD"] ? @"$" : @"");
             metric = [NSString stringWithFormat:@"%@%@", symbol, info.totalBalance];
         }
-    } else if (self.providerMode == CQProviderModeGLM && self.connectionState == CQConnectionStateConnected) {
-        metric = [self.glmModel isEqualToString:CQGLMFlashModel] ? @"Flash" : @"5.3";
+            remainingPercent = self.deepSeekBalance.available ? 100.0 : 0.0;
     }
     NSString *taskSuffix = @"";
     NSColor *taskColor = nil;
@@ -1309,42 +1309,35 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
     NSUInteger runningCount = self.taskSnapshot.runningTasks.count;
     if (waitingCount > 0) {
         taskSuffix = [NSString stringWithFormat:@" · !%lu", (unsigned long)waitingCount];
-        taskColor = CQTheme.yellow;
+        taskColor = CQTheme.menuBarYellow;
     } else if (completedCount > 0) {
         taskSuffix = [NSString stringWithFormat:@" · ✓%lu", (unsigned long)completedCount];
-        taskColor = CQTheme.green;
+        taskColor = CQTheme.menuBarGreen;
     } else if (runningCount > 0) {
         taskSuffix = [NSString stringWithFormat:@" · ●%lu", (unsigned long)runningCount];
-        taskColor = CQTheme.accent;
+        taskColor = CQTheme.menuBarAccent;
     }
     NSString *baseTitle = nil;
     if (metric) {
-        baseTitle = [NSString stringWithFormat:@" %@ %@", provider, metric];
-    } else if (self.connectionState == CQConnectionStateError
+        baseTitle = metric;
+    } else if (self.connectionState == CQConnectionStateConnected
+               || self.connectionState == CQConnectionStateError
                || self.connectionState == CQConnectionStateOffline
                || self.connectionState == CQConnectionStateSignedOut) {
-        baseTitle = [NSString stringWithFormat:@" %@ —", provider];
+        baseTitle = @"—";
     } else {
-        baseTitle = [NSString stringWithFormat:@" %@ …", provider];
+        baseTitle = @"…";
     }
-    NSFont *statusFont = [NSFont monospacedDigitSystemFontOfSize:12 weight:NSFontWeightMedium];
-    NSMutableAttributedString *statusTitle = [[NSMutableAttributedString alloc] initWithString:baseTitle attributes:@{
-        NSFontAttributeName: statusFont,
-        NSForegroundColorAttributeName: NSColor.labelColor
-    }];
-    if (taskSuffix.length > 0) {
-        [statusTitle appendAttributedString:[[NSAttributedString alloc] initWithString:taskSuffix attributes:@{
-            NSFontAttributeName: statusFont,
-            NSForegroundColorAttributeName: taskColor
-        }]];
-    }
-    self.statusItem.button.attributedTitle = statusTitle;
+    [self.statusView updateMetric:baseTitle remainingPercent:remainingPercent taskSuffix:taskSuffix taskColor:taskColor];
+    self.statusView.running = runningCount > 0 && waitingCount == 0 && completedCount == 0;
+    self.statusItem.length = self.statusView.preferredWidth + 12;
+    self.statusView.frame = NSMakeRect(6, 0, self.statusView.preferredWidth, NSHeight(self.statusItem.button.bounds));
     self.statusItem.button.toolTip = [NSString stringWithFormat:
         @"Codex Quota\n待审核 %lu · 未查看完成 %lu · 运行中 %lu",
         (unsigned long)waitingCount,
         (unsigned long)completedCount,
         (unsigned long)runningCount];
-    self.statusItem.button.accessibilityLabel = [NSString stringWithFormat:@"%@ 模型状态", provider];
+    self.statusItem.button.accessibilityLabel = @"额度与任务状态";
     self.statusItem.button.accessibilityValue = [NSString stringWithFormat:@"%@；待审核 %lu，未查看完成 %lu，运行中 %lu",
         metric ?: [self statusText],
         (unsigned long)waitingCount,

@@ -8,6 +8,13 @@ static NSColor *CQHex(NSUInteger rgb) {
                               alpha:1.0];
 }
 
+static NSColor *CQMenuBarColor(NSString *name, NSUInteger lightRGB, NSUInteger darkRGB) {
+    return [NSColor colorWithName:name dynamicProvider:^NSColor *(NSAppearance *appearance) {
+        NSString *match = [appearance bestMatchFromAppearancesWithNames:@[NSAppearanceNameAqua, NSAppearanceNameDarkAqua]];
+        return CQHex([match isEqualToString:NSAppearanceNameDarkAqua] ? darkRGB : lightRGB);
+    }];
+}
+
 @implementation CQTheme
 + (NSColor *)base { return CQHex(0xFAFAFB); }
 + (NSColor *)mantle { return CQHex(0xF3F4F6); }
@@ -21,10 +28,29 @@ static NSColor *CQHex(NSUInteger rgb) {
 + (NSColor *)green { return CQHex(0x237A44); }
 + (NSColor *)yellow { return CQHex(0x9C5F13); }
 + (NSColor *)red { return CQHex(0xC43D4B); }
++ (NSColor *)menuBarText { return CQMenuBarColor(@"CQMenuBarText", 0x20242C, 0xF4F5F7); }
++ (NSColor *)menuBarTrack { return CQMenuBarColor(@"CQMenuBarTrack", 0xB8BDC5, 0x727780); }
++ (NSColor *)menuBarAccent { return CQMenuBarColor(@"CQMenuBarAccent", 0x007AFF, 0x70C7FF); }
++ (NSColor *)menuBarGreen { return CQMenuBarColor(@"CQMenuBarGreen", 0x237A44, 0x30D158); }
++ (NSColor *)menuBarYellow { return CQMenuBarColor(@"CQMenuBarYellow", 0x9C5F13, 0xFF9F0A); }
 + (NSColor *)colorForRemaining:(double)remaining {
     if (remaining <= 20.0) return self.red;
     if (remaining <= 50.0) return self.yellow;
     return self.accent;
+}
++ (NSColor *)menuBarColorForRemaining:(double)remaining {
+    static NSArray<NSColor *> *colors;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        colors = @[
+            CQMenuBarColor(@"CQMenuBarQuotaRed", 0xE2353F, 0xFF453A),
+            CQMenuBarColor(@"CQMenuBarQuotaOrange", 0xC06D00, 0xFF9F0A),
+            CQMenuBarColor(@"CQMenuBarQuotaGreen", 0x0D9443, 0x30D158)
+        ];
+    });
+    if (remaining <= 20.0) return colors[0];
+    if (remaining <= 50.0) return colors[1];
+    return colors[2];
 }
 @end
 
