@@ -12,8 +12,8 @@
 #import "CQTaskMonitor.h"
 #import "CQTaskNotificationController.h"
 #import "CQTheme.h"
-
 #import "CQMenuBarStatusView.h"
+
 static NSString * const CQSavedCodexPathKey = @"CodexExecutablePath";
 static CGFloat const CQPopoverWidth = 360.0;
 static CGFloat const CQPanelAnchorGap = 6.0;
@@ -57,8 +57,8 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
 
 @interface CQAppDelegate : NSObject <NSApplicationDelegate, NSWindowDelegate>
 @property(nonatomic, strong) NSStatusItem *statusItem;
-@property(nonatomic, strong) CQGlassPanel *panel;
 @property(nonatomic, strong) CQMenuBarStatusView *statusView;
+@property(nonatomic, strong) CQGlassPanel *panel;
 @property(nonatomic, strong) CQPopoverController *popoverController;
 @property(nonatomic, strong) CQExtensionManager *extensionManager;
 @property(nonatomic, strong) CQExtensionManagerController *extensionController;
@@ -1299,8 +1299,8 @@ typedef NS_ENUM(NSInteger, CQPopoverPage) {
             NSString *symbol = [info.currency isEqualToString:@"CNY"] ? @"¥"
                 : ([info.currency isEqualToString:@"USD"] ? @"$" : @"");
             metric = [NSString stringWithFormat:@"%@%@", symbol, info.totalBalance];
-        }
             remainingPercent = self.deepSeekBalance.available ? 100.0 : 0.0;
+        }
     }
     NSString *taskSuffix = @"";
     NSColor *taskColor = nil;
