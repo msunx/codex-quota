@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400" role="img" aria-labelledby="title desc">
   <title id="title">Codex Quota</title>
-  <desc id="desc">Codex Quota 是一个原生 macOS 菜单栏控制面，用于查看 Codex 任务与额度、切换模型来源并维护本机扩展。</desc>
+  <desc id="desc">Codex Quota 是一个原生 macOS 菜单栏控制面，用于查看 Codex 任务与官方订阅额度，并维护本机扩展。</desc>
 
   <defs>
     <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
@@ -18,7 +18,7 @@
       <text x="28" y="14" fill="#66676D" font-size="18" font-weight="720" letter-spacing="1.8">NATIVE APPKIT · LOCAL FIRST</text>
 
       <text x="0" y="102" fill="#18181A" font-size="72" font-weight="780">Codex Quota</text>
-      <text x="0" y="152" fill="#18181A" font-size="28" font-weight="720">任务、额度、模型与扩展，</text>
+      <text x="0" y="152" fill="#18181A" font-size="28" font-weight="720">任务、订阅额度与扩展，</text>
       <text x="0" y="190" fill="#18181A" font-size="28" font-weight="720">收进一个菜单栏控制面。</text>
 
       <g transform="translate(0 230)" font-size="18" font-weight="680">
@@ -47,20 +47,28 @@
       <text x="361" y="29" fill="#D97706" font-size="18" font-weight="760">· !1</text>
       <circle cx="424" cy="22" r="6" fill="#2F7DF6"/>
 
-      <rect x="0" y="60" width="496" height="318" rx="25" fill="#FAFAF8" stroke="#D8D8D4" stroke-width="2"/>
+      <rect x="0" y="60" width="496" height="282" rx="25" fill="#FAFAF8" stroke="#D8D8D4" stroke-width="2"/>
       <text x="24" y="99" fill="#18181A" font-size="26" font-weight="760">Codex Quota</text>
       <circle cx="391" cy="90" r="5" fill="#2F7DF6"/>
       <text x="406" y="97" fill="#2F7DF6" font-size="17" font-weight="720">已连接</text>
 
-      <g transform="translate(24 116)" font-size="17" font-weight="680">
-        <rect width="448" height="38" rx="10" fill="#E8E8EA"/>
-        <rect x="2" y="2" width="146" height="34" rx="9" fill="#FFFFFF"/>
-        <text x="75" y="25" text-anchor="middle" fill="#18181A">Codex 订阅</text>
-        <text x="224" y="25" text-anchor="middle" fill="#66676D">DeepSeek</text>
-        <text x="374" y="25" text-anchor="middle" fill="#66676D">GLM</text>
+      <g transform="translate(24 135)">
+        <circle cx="6" cy="7" r="6" fill="#2F7DF6"/>
+        <text x="22" y="14" fill="#18181A" font-size="17" font-weight="680">5 小时额度</text>
+        <g transform="translate(135 1)">
+          <rect width="23" height="12" rx="6" fill="#79A8FA"/>
+          <rect x="29" width="23" height="12" rx="6" fill="#5D95F8"/>
+          <rect x="58" width="23" height="12" rx="6" fill="#4182F6"/>
+          <rect x="87" width="23" height="12" rx="6" fill="#2F7DF6"/>
+          <rect x="116" width="23" height="12" rx="6" fill="#2F7DF6"/>
+          <rect x="145" width="23" height="12" rx="6" fill="#2F7DF6"/>
+          <rect x="174" width="23" height="12" rx="6" fill="#E8E8EA"/>
+          <rect x="203" width="23" height="12" rx="6" fill="#E8E8EA"/>
+        </g>
+        <text x="448" y="15" text-anchor="end" fill="#2F7DF6" font-size="20" font-weight="760">74%</text>
       </g>
 
-      <g transform="translate(24 170)">
+      <g transform="translate(24 182)">
         <rect width="448" height="132" rx="17" fill="#FFFFFF" stroke="#E4E4E0"/>
         <text x="18" y="29" fill="#18181A" font-size="18" font-weight="740">任务动态</text>
         <text x="430" y="29" text-anchor="end" fill="#92939A" font-size="16">3 项需关注</text>
@@ -76,22 +84,6 @@
         <circle cx="24" cy="112" r="6" fill="#34A853"/>
         <text x="42" y="118" fill="#18181A" font-size="17" font-weight="680">修复 Markdown 预览</text>
         <text x="428" y="118" text-anchor="end" fill="#34A853" font-size="16" font-weight="720">已完成</text>
-      </g>
-
-      <g transform="translate(24 316)">
-        <circle cx="6" cy="7" r="6" fill="#2F7DF6"/>
-        <text x="22" y="14" fill="#18181A" font-size="17" font-weight="680">5 小时额度</text>
-        <g transform="translate(135 1)">
-          <rect width="23" height="12" rx="6" fill="#79A8FA"/>
-          <rect x="29" width="23" height="12" rx="6" fill="#5D95F8"/>
-          <rect x="58" width="23" height="12" rx="6" fill="#4182F6"/>
-          <rect x="87" width="23" height="12" rx="6" fill="#2F7DF6"/>
-          <rect x="116" width="23" height="12" rx="6" fill="#2F7DF6"/>
-          <rect x="145" width="23" height="12" rx="6" fill="#2F7DF6"/>
-          <rect x="174" width="23" height="12" rx="6" fill="#E8E8EA"/>
-          <rect x="203" width="23" height="12" rx="6" fill="#E8E8EA"/>
-        </g>
-        <text x="448" y="15" text-anchor="end" fill="#2F7DF6" font-size="20" font-weight="760">74%</text>
       </g>
     </g>
   </g>

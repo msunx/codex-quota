@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/readme/hero.svg" width="100%" alt="Codex Quota：在 macOS 菜单栏查看 Codex 任务与额度、切换模型并维护本机扩展">
+  <img src="./assets/readme/hero.svg" width="100%" alt="Codex Quota：在 macOS 菜单栏查看 Codex 任务与官方订阅额度并维护本机扩展">
 </p>
 
 <p align="center">
@@ -17,15 +17,14 @@
   <a href="#开始使用"><strong>开始使用</strong></a> ·
   <a href="#任务与菜单栏信号"><strong>任务信号</strong></a> ·
   <a href="#iphone-通知"><strong>iPhone 通知</strong></a> ·
-  <a href="#模型来源"><strong>模型来源</strong></a> ·
   <a href="#扩展管理"><strong>扩展管理</strong></a> ·
   <a href="#数据与隐私"><strong>数据与隐私</strong></a>
 </p>
 
-## 一个入口，四类日常状态
+## 菜单栏里的任务、额度与扩展
 
 <p align="center">
-  <img src="./assets/readme/task-panel.png" width="360" alt="Codex Quota 当前主看板预览，包含模型来源、可用额度、任务动态和固定底部工具栏">
+  <img src="./assets/readme/task-panel.png" width="360" alt="Codex Quota 当前主看板预览，包含可用额度、任务动态和固定底部工具栏">
 </p>
 
 <p align="center">
@@ -36,7 +35,6 @@ Codex Quota 把经常散落在 Codex、终端和配置目录里的状态集中�
 
 - **盯任务**：菜单栏显示最高优先级任务摘要，运行时以环形短弧提示，任务数始终常亮；主看板只保留待审核、运行中和完成但尚未查看的任务。任务完成或需要审批时发送 macOS 系统通知，也可主动配置 Bark 同步提醒到 iPhone。
 - **看额度**：菜单栏用代码括号图标与独立数字显示剩余额度，面板中展示全部 Codex 额度窗口、重置时间、剩余重置次数和可选的工作区额度。
-- **切模型**：在 Codex 订阅、DeepSeek 与智谱 GLM 之间切换，同时保留原有配置的恢复路径。
 - **管扩展**：识别第三方与自建 Skill / 插件，检查版本、更新、定位目录并完整卸载 Skill。
 
 ## 开始使用
@@ -46,7 +44,7 @@ Codex Quota 把经常散落在 Codex、终端和配置目录里的状态集中�
 从 [GitHub Releases](https://github.com/msunx/codex-quota/releases/latest) 下载 `Codex-Quota-v0.3.0-macos-arm64.zip`，解压后将 **Codex Quota.app** 拖入 `/Applications`。
 
 > [!NOTE]
-> 最新稳定版为 `v0.3.0`，新增 Bark 通知同步到 iPhone，并提供独立通知设置页、链接显隐和测试推送。
+> 预编译的 `v0.3.0` 支持 Bark 通知同步。下文说明当前源码构建版本。
 
 应用使用 ad-hoc 签名且未公证。首次打开如被 macOS 拦截，请前往“系统设置 → 隐私与安全性”确认打开。
 
@@ -67,9 +65,9 @@ cd codex-quota
 
 ## 任务与菜单栏信号
 
-菜单栏左侧使用 24 × 22 pt「代码括号」图标，额度数字与图标分开展示，右侧显示任务状态和数量，不显示来源名称或模型型号。Codex 显示最低剩余百分比，DeepSeek 显示剩余金额；GLM 尚无额度数据时显示横线。
+菜单栏左侧使用 24 × 22 pt「代码括号」图标，额度数字与图标分开展示，右侧显示任务状态和数量，额度数字取官方订阅各窗口中的最低剩余百分比。
 
-代码括号中的三根额度柱按同一个最低剩余比例填充：高于 50% 为绿色，20%～50% 为橙色，不高于 20% 为红色，0% 保留红色端点。颜色随菜单栏明暗外观调整。DeepSeek 余额可用时为满柱绿色、不可用时为红色端点；没有有效额度或未连接时使用中性轨道。
+代码括号中的三根额度柱按同一个最低剩余比例填充：高于 50% 为绿色，20%～50% 为橙色，不高于 20% 为红色，0% 保留红色端点。颜色随菜单栏明暗外观调整。没有有效额度或未连接时使用中性轨道。
 
 运行提示采用「环形流转」：右侧的亮蓝短弧沿 12 pt 圆环以 1.8 秒一圈匀速旋转，任务数与圆环并排显示。蓝色随菜单栏明暗外观调整，左侧图标、额度数字、中间分隔点和右侧任务数始终保持静止、常亮。
 
@@ -112,27 +110,9 @@ Codex Quota 必须保持运行才能发送推送。Bark 通道不受 Mac 桌面�
 
 推送仅包含状态标题、任务标题和项目名，使用 `Codex Quota` 分组及幂等 ID，不包含对话正文、完整工作目录、命令或文件内容。启用后，这些摘要会发送到所配置的 Bark 服务。
 
-## 模型来源
+## 从旧版升级
 
-| 来源 | 凭据 | 可见状态 | 可选模型 |
-| --- | --- | --- | --- |
-| Codex 订阅 | 复用本机现有登录 | 额度窗口、重置时间、任务状态 | 当前 Codex 配置 |
-| DeepSeek | DeepSeek API Key | 官方余额 | `deepseek-v4-flash`、`deepseek-v4-pro` |
-| 智谱 GLM | 智谱 API Key | 配置状态 | `glm-5.3-flash`、`glm-5.3` |
-
-切换外部来源时，应用会先备份 `~/.codex/config.toml` 和已有的 `models.json`，再写入新配置；切回 Codex 订阅时恢复备份。API Key 按 Codex 接入要求写入配置，并使用独立服务项额外保存在 macOS 钥匙串中。
-
-第一次切换外部来源：
-
-1. 在面板顶部选择 **DeepSeek** 或 **GLM**；
-2. 输入或使用 `⌘V` 粘贴对应 API Key；
-3. 选择模型；
-4. 配置成功后选择 **立即重启**。
-
-DeepSeek 模式需要 Codex `0.144.0` 或更新版本。GLM 使用智谱提供的 OpenAI Responses 端点 `https://open.bigmodel.cn/api/v1`。
-
-> [!NOTE]
-> 本机历史兼容桥只注入由 Codex Quota 发起的新 Codex 进程。若完全退出后从 Dock 手动打开 Codex，可能绕过兼容桥；重新切换一次来源并选择“立即重启”即可恢复统一入口，不会删除对话。
+新版首次连接时会检测 Codex Quota 旧版写入的模型配置，并从 `codex-quota-backup` 恢复原来的 Codex 配置及模型目录文件。恢复后保留原始备份。若 Codex 当时正在运行，重新打开 Codex 即可应用恢复的配置。对话记录由 Codex 管理，历史列表遵循客户端的默认行为。
 
 ## 扩展管理
 
@@ -151,15 +131,13 @@ DeepSeek 模式需要 Codex `0.144.0` 或更新版本。GLM 使用智谱提供�
 ## 它如何工作
 
 <p align="center">
-  <img src="./assets/readme/architecture.svg" width="100%" alt="Codex Quota 本地架构：读取 Codex 额度与任务索引，管理模型配置和扩展，再输出到菜单栏与 Codex Desktop">
+  <img src="./assets/readme/architecture.svg" width="100%" alt="Codex Quota 本地架构：读取 Codex 额度、任务索引和审批状态，提供任务通知与本机扩展管理">
 </p>
 
 - **额度状态**：App Server 事件为主、30 秒轮询为辅；打开面板、网络恢复或系统唤醒时立即刷新。
 - **任务状态**：只读查询本机主会话索引与 turn 状态数据库，并增量读取当前会话日志中的任务开始、完成和中断事件，每秒校准；会话恢复或日志换文件后，历史索引滞后也能识别新一轮任务。运行检测不受会话创建日期、最近会话数量或完成提醒的 7 天保留期限制。通过本机 IPC 订阅主会话的运行与审批状态，断开后自动重连。实时状态明确为空闲且没有待处理请求时，即使旧 turn 仍记为运行中，也会从运行列表移除，不修改 Codex 数据库、不补发完成通知；已查看记录只保存在应用偏好中。
 - **系统通知**：任务完成或获得明确的审批等待信号时，通过 macOS 通知中心发送本地通知，不经过外部服务。
 - **iPhone 通知**：用户主动开启 Bark 后，将待审批与任务完成摘要以 JSON POST 发送到配置的设备链接；使用独立去重记录，暂时失败最多自动重试两次。
-- **模型配置**：只在用户主动切换时备份、写入或恢复配置，并询问是否重启 Codex。
-- **历史兼容桥**：仅为 `thread/list` 补充本机 provider 过滤，不读取或改写会话内容。
 - **扩展维护**：只读扫描来源与版本；更新、打开目录和卸载都由用户明确触发。
 
 ## 数据与隐私
@@ -171,10 +149,8 @@ DeepSeek 模式需要 Codex `0.144.0` 或更新版本。GLM 使用智谱提供�
 - 任务检测只保留线程标题、工作目录、会话来源、日志路径、turn 标识、状态和时间，不修改 Codex SQLite 数据库或会话日志。日志读取只解析任务生命周期事件，随事件附带的正文立即丢弃；内存中缓存文件读取位置与生命周期元数据，不保存或上传对话正文。
 - 审批订阅会接收 Codex 发出的会话快照与增量，只保留内存中的审批标记、请求类型和 turn 标识；随帧收到的对话正文、命令参数和文件改动会立即丢弃，不写入日志、不持久化、不上传，也不会代替用户批准请求。
 - Bark 链接仅保存在 macOS 钥匙串，不写入日志；启用开关和去重元数据保存在应用偏好中。只有主动启用后，任务状态标题、任务标题和项目名才会发送到配置的 Bark 服务；测试推送仅发送固定测试内容。
-- DeepSeek 余额只请求官方 `/user/balance`；DeepSeek 与 GLM API Key 不写日志、不在界面回显。
-- 历史兼容桥不修改 SQLite 会话库或 JSONL 内容。
 - 扩展检查只按安装来源访问对应上游，不上传本机 Skill 内容。
-- 配置切换、扩展更新、Skill 卸载和登录时启动都需要用户主动操作。
+- 扩展更新、Skill 卸载和登录时启动由用户主动操作。
 
 ## 兼容性与限制
 
@@ -182,24 +158,9 @@ DeepSeek 模式需要 Codex `0.144.0` 或更新版本。GLM 使用智谱提供�
 - 需要 Codex App 或 Codex CLI；
 - 当前稳定版为 `0.3.0`，不支持多账号切换；
 - 不包含应用自身自动更新、Mac App Store 分发、公证或内置 Codex；
-- 无来源元数据的本地 Skill 无法自动判断新版本；
 - 登录时启动默认关闭。
 
 ## 常见问题
-
-<details>
-<summary><strong>切换到 DeepSeek 或 GLM 后为什么只看到当前来源的对话？</strong></summary>
-
-确认切换完成时选择了“立即重启”。兼容桥只会注入由 Codex Quota 发起的新 Codex 进程。
-
-</details>
-
-<details>
-<summary><strong>“统一历史”会修改或合并旧对话吗？</strong></summary>
-
-不会。统一的只是列表入口；每条对话仍保留原始 provider 和内容。
-
-</details>
 
 <details>
 <summary><strong>为什么无法开启“登录时启动”？</strong></summary>
@@ -218,8 +179,7 @@ macOS 全屏模式可能隐藏整条菜单栏。将鼠标移到屏幕顶部，�
 ## 开发
 
 ```text
-Sources/CodexQuota/    AppKit 界面、额度、任务状态、配置与扩展管理
-Sources/HistoryBridge/ 本机历史列表兼容桥
+Sources/CodexQuota/    AppKit 界面、额度、任务状态与扩展管理
 Resources/             App Bundle 配置
 scripts/               构建与图标生成脚本
 ```

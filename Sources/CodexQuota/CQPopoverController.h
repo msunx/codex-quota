@@ -8,9 +8,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy, nullable) void (^refreshHandler)(void);
 @property(nonatomic, copy, nullable) void (^loginHandler)(void);
 @property(nonatomic, copy, nullable) void (^chooseCodexHandler)(void);
-@property(nonatomic, copy, nullable) void (^providerChangeHandler)(CQProviderMode mode);
-@property(nonatomic, copy, nullable) void (^modelChangeHandler)(NSString *model);
-@property(nonatomic, copy, nullable) void (^changeAPIKeyHandler)(void);
 @property(nonatomic, copy, nullable) void (^extensionManagerHandler)(void);
 @property(nonatomic, copy, nullable) void (^notificationSettingsHandler)(void);
 @property(nonatomic, copy, nullable) void (^launchAtLoginHandler)(BOOL enabled);
@@ -19,10 +16,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy, nullable) void (^quitHandler)(void);
 
 - (void)renderSnapshot:(CQQuotaSnapshot * _Nullable)snapshot
-       deepSeekBalance:(CQDeepSeekBalance * _Nullable)deepSeekBalance
           taskSnapshot:(CQTaskSnapshot * _Nullable)taskSnapshot
-          providerMode:(CQProviderMode)providerMode
-                 model:(NSString *)model
                 status:(NSString *)status
                 detail:(NSString *)detail
                  error:(NSString * _Nullable)error

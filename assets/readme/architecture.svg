@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
   <title id="title">Codex Quota 本地架构</title>
-  <desc id="desc">Codex App Server、本机任务索引、模型服务和扩展来源进入 Codex Quota，再驱动菜单栏、Codex Desktop、本机配置与扩展目录。</desc>
+  <desc id="desc">Codex Quota 读取 Codex App Server、本机任务索引和桌面端审批状态，并提供任务通知与本机扩展管理。</desc>
 
   <rect width="1200" height="560" rx="28" fill="#F2F2F0"/>
   <rect x="1" y="1" width="1198" height="558" rx="27" fill="none" stroke="#D8D8D4" stroke-width="2"/>
 
   <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif">
-    <text x="54" y="62" fill="#18181A" font-size="36" font-weight="770">所有状态停留在本机</text>
-    <text x="1146" y="60" text-anchor="end" fill="#66676D" font-size="18" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">READ AUTOMATICALLY · WRITE EXPLICITLY</text>
+    <text x="54" y="62" fill="#18181A" font-size="36" font-weight="770">Codex 额度与任务从本机读取</text>
+    <text x="1146" y="60" text-anchor="end" fill="#66676D" font-size="18" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">LOCAL APPKIT</text>
 
     <text x="54" y="108" fill="#92939A" font-size="18" font-weight="760" letter-spacing="2">SOURCES</text>
     <text x="426" y="108" fill="#92939A" font-size="18" font-weight="760" letter-spacing="2">LOCAL CONTROL</text>
@@ -30,8 +30,8 @@
     <g transform="translate(54 326)">
       <rect width="300" height="82" rx="16" fill="#FFFFFF" stroke="#7C3AED" stroke-width="2"/>
       <circle cx="26" cy="29" r="7" fill="#7C3AED"/>
-      <text x="46" y="36" fill="#18181A" font-size="21" font-weight="720">模型服务</text>
-      <text x="24" y="66" fill="#66676D" font-size="18">Codex · DeepSeek · GLM</text>
+      <text x="46" y="36" fill="#18181A" font-size="21" font-weight="720">Codex Desktop IPC</text>
+      <text x="24" y="66" fill="#66676D" font-size="18">运行 · 审批状态</text>
     </g>
 
     <g transform="translate(54 424)">
@@ -67,8 +67,8 @@
       <g transform="translate(26 224)">
         <rect width="308" height="62" rx="14" fill="#FFFFFF" stroke="#E4E4E0"/>
         <circle cx="24" cy="31" r="6" fill="#7C3AED"/>
-        <text x="44" y="28" fill="#18181A" font-size="19" font-weight="710">模型切换</text>
-        <text x="44" y="51" fill="#66676D" font-size="18">备份 · 写入 · 恢复 · Keychain</text>
+        <text x="44" y="28" fill="#18181A" font-size="19" font-weight="710">任务通知</text>
+        <text x="44" y="51" fill="#66676D" font-size="18">待审批 · 任务完成</text>
       </g>
 
       <g transform="translate(26 298)">
@@ -91,13 +91,13 @@
     <g transform="translate(824 228)">
       <rect width="322" height="82" rx="16" fill="#FFFFFF" stroke="#D8D8D4"/>
       <text x="24" y="34" fill="#18181A" font-size="21" font-weight="720">Codex Desktop</text>
-      <text x="24" y="64" fill="#66676D" font-size="18">模型配置 + 历史入口</text>
+      <text x="24" y="64" fill="#66676D" font-size="18">点击任务打开会话</text>
     </g>
 
     <g transform="translate(824 326)">
       <rect width="322" height="82" rx="16" fill="#FFFFFF" stroke="#D8D8D4"/>
-      <text x="24" y="34" fill="#18181A" font-size="21" font-weight="720">Keychain 与配置</text>
-      <text x="24" y="64" fill="#66676D" font-size="18">凭据保护 + 可恢复切换</text>
+      <text x="24" y="34" fill="#18181A" font-size="21" font-weight="720">通知中心与 Bark</text>
+      <text x="24" y="64" fill="#66676D" font-size="18">macOS 提醒 · 自选 iPhone 推送</text>
     </g>
 
     <g transform="translate(824 424)">
@@ -106,6 +106,6 @@
       <text x="24" y="64" fill="#66676D" font-size="18">按来源维护，不上传内容</text>
     </g>
 
-    <text x="54" y="538" fill="#66676D" font-size="18">不读取对话正文 · 不修改 Codex 会话数据库 · 写入操作始终由用户触发</text>
+    <text x="54" y="538" fill="#66676D" font-size="18">只读查询 Codex 会话数据库 · Bark 由用户主动开启</text>
   </g>
 </svg>

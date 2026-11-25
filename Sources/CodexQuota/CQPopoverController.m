@@ -374,18 +374,12 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
 @property(nonatomic, strong) NSTextField *detailLabel;
 @property(nonatomic, strong) NSTextField *planLabel;
 @property(nonatomic, strong) NSStackView *contentStack;
-@property(nonatomic, strong) NSSegmentedControl *providerControl;
 @property(nonatomic, strong) NSView *taskPanel;
 @property(nonatomic, strong) NSTextField *taskCountLabel;
 @property(nonatomic, strong) NSButton *markAllTasksViewedButton;
 @property(nonatomic, strong) NSStackView *taskStack;
 @property(nonatomic, strong) NSMutableDictionary<NSString *, CQTaskRowButton *> *taskRows;
 @property(nonatomic, copy) NSString *taskSignature;
-@property(nonatomic, strong) NSView *deepSeekPanel;
-@property(nonatomic, strong) NSStackView *deepSeekSettings;
-@property(nonatomic, strong) NSPopUpButton *modelPopup;
-@property(nonatomic, strong) NSTextField *providerMetricTitleLabel;
-@property(nonatomic, strong) NSTextField *deepSeekBalanceLabel;
 @property(nonatomic, strong) NSTextField *quotaTitleLabel;
 @property(nonatomic, strong) NSTextField *quotaSummaryLabel;
 @property(nonatomic, strong) NSView *quotaPanel;
@@ -479,18 +473,6 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
     [subheader addArrangedSubview:self.planLabel];
     [content addArrangedSubview:subheader];
 
-    self.providerControl = [NSSegmentedControl segmentedControlWithLabels:@[@"Codex 订阅", @"DeepSeek", @"GLM"]
-                                                             trackingMode:NSSegmentSwitchTrackingSelectOne
-                                                                   target:self
-                                                                   action:@selector(providerChanged:)];
-    self.providerControl.segmentStyle = NSSegmentStyleRounded;
-    self.providerControl.font = [NSFont systemFontOfSize:12 weight:NSFontWeightMedium];
-    self.providerControl.segmentDistribution = NSSegmentDistributionFillEqually;
-    self.providerControl.controlSize = NSControlSizeRegular;
-    self.providerControl.selectedSegment = 0;
-    self.providerControl.accessibilityLabel = @"模型来源";
-    [content addArrangedSubview:self.providerControl];
-
     self.taskPanel = [NSView new];
     NSStackView *taskContent = [NSStackView new];
     taskContent.orientation = NSUserInterfaceLayoutOrientationVertical;
@@ -525,62 +507,6 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
         [taskHeader.widthAnchor constraintEqualToAnchor:taskContent.widthAnchor],
         [self.taskStack.widthAnchor constraintEqualToAnchor:taskContent.widthAnchor]
     ]];
-
-
-    self.deepSeekPanel = [NSView new];
-    self.deepSeekSettings = [NSStackView new];
-    self.deepSeekSettings.orientation = NSUserInterfaceLayoutOrientationVertical;
-    self.deepSeekSettings.alignment = NSLayoutAttributeLeading;
-    self.deepSeekSettings.spacing = 11;
-    self.deepSeekSettings.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.deepSeekPanel addSubview:self.deepSeekSettings];
-
-    NSStackView *modelRow = CQHorizontal();
-    [modelRow addArrangedSubview:CQLabel(@"当前模型", [NSFont systemFontOfSize:12 weight:NSFontWeightMedium], CQTheme.subtext)];
-    NSView *modelSpacer = [NSView new];
-    [modelSpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
-    [modelRow addArrangedSubview:modelSpacer];
-    self.modelPopup = [NSPopUpButton new];
-    self.modelPopup.autoenablesItems = NO;
-    [self.modelPopup addItemWithTitle:CQDeepSeekFlashModel];
-    [self.modelPopup addItemWithTitle:CQDeepSeekProModel];
-    self.modelPopup.target = self;
-    self.modelPopup.action = @selector(modelChanged:);
-    self.modelPopup.font = [NSFont monospacedSystemFontOfSize:11 weight:NSFontWeightMedium];
-    [modelRow addArrangedSubview:self.modelPopup];
-    [self.deepSeekSettings addArrangedSubview:modelRow];
-
-    NSStackView *balanceRow = CQHorizontal();
-    self.providerMetricTitleLabel = CQLabel(@"剩余金额", [NSFont systemFontOfSize:12 weight:NSFontWeightMedium], CQTheme.subtext);
-    [balanceRow addArrangedSubview:self.providerMetricTitleLabel];
-    NSView *balanceSpacer = [NSView new];
-    [balanceSpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
-    [balanceRow addArrangedSubview:balanceSpacer];
-    self.deepSeekBalanceLabel = CQLabel(@"等待余额数据…",
-        [NSFont monospacedDigitSystemFontOfSize:13 weight:NSFontWeightSemibold], CQTheme.text);
-    self.deepSeekBalanceLabel.alignment = NSTextAlignmentRight;
-    [balanceRow addArrangedSubview:self.deepSeekBalanceLabel];
-    [self.deepSeekSettings addArrangedSubview:balanceRow];
-
-    NSStackView *keyRow = CQHorizontal();
-    [keyRow addArrangedSubview:CQLabel(@"连接凭据",
-        [NSFont systemFontOfSize:10], CQTheme.overlay)];
-    NSView *keySpacer = [NSView new];
-    [keySpacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
-    [keyRow addArrangedSubview:keySpacer];
-    [keyRow addArrangedSubview:CQButton(@"更换 API Key", @"key", self, @selector(changeAPIKey:))];
-    [self.deepSeekSettings addArrangedSubview:keyRow];
-    [modelRow.widthAnchor constraintEqualToAnchor:self.deepSeekSettings.widthAnchor].active = YES;
-    [balanceRow.widthAnchor constraintEqualToAnchor:self.deepSeekSettings.widthAnchor].active = YES;
-    [keyRow.widthAnchor constraintEqualToAnchor:self.deepSeekSettings.widthAnchor].active = YES;
-    [NSLayoutConstraint activateConstraints:@[
-        [self.deepSeekSettings.leadingAnchor constraintEqualToAnchor:self.deepSeekPanel.leadingAnchor],
-        [self.deepSeekSettings.trailingAnchor constraintEqualToAnchor:self.deepSeekPanel.trailingAnchor],
-        [self.deepSeekSettings.topAnchor constraintEqualToAnchor:self.deepSeekPanel.topAnchor constant:2],
-        [self.deepSeekSettings.bottomAnchor constraintEqualToAnchor:self.deepSeekPanel.bottomAnchor constant:-2]
-    ]];
-    self.deepSeekPanel.hidden = YES;
-    [content addArrangedSubview:self.deepSeekPanel];
 
     self.quotaPanel = [NSView new];
     NSStackView *quotaContent = [NSStackView new];
@@ -719,9 +645,7 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
         [content.bottomAnchor constraintEqualToAnchor:document.bottomAnchor constant:-14],
         [header.widthAnchor constraintEqualToAnchor:content.widthAnchor],
         [subheader.widthAnchor constraintEqualToAnchor:content.widthAnchor],
-        [self.providerControl.widthAnchor constraintEqualToAnchor:content.widthAnchor],
         [self.taskPanel.widthAnchor constraintEqualToAnchor:content.widthAnchor],
-        [self.deepSeekPanel.widthAnchor constraintEqualToAnchor:content.widthAnchor],
         [self.quotaPanel.widthAnchor constraintEqualToAnchor:content.widthAnchor],
         [self.errorLabel.widthAnchor constraintEqualToAnchor:content.widthAnchor],
         [footerStack.leadingAnchor constraintEqualToAnchor:footer.leadingAnchor constant:20],
@@ -881,83 +805,53 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
 }
 
 - (void)renderSnapshot:(CQQuotaSnapshot *)snapshot
-       deepSeekBalance:(CQDeepSeekBalance *)deepSeekBalance
           taskSnapshot:(CQTaskSnapshot *)taskSnapshot
-          providerMode:(CQProviderMode)providerMode
-                 model:(NSString *)model
                 status:(NSString *)status
                 detail:(NSString *)detail
                  error:(NSString *)error
             refreshing:(BOOL)refreshing
              signedOut:(BOOL)signedOut
          launchAtLogin:(BOOL)launchAtLogin {
-    BOOL deepSeek = providerMode == CQProviderModeDeepSeek;
-    BOOL glm = providerMode == CQProviderModeGLM;
-    BOOL externalProvider = providerMode != CQProviderModeCodex;
     self.statusLabel.stringValue = status;
     NSColor *statusColor = [status isEqualToString:@"已连接"] ? CQTheme.green
-        : ([status isEqualToString:@"需要登录"]
-           || [status isEqualToString:@"需要 API Key"]
-           || [status isEqualToString:@"已断开"] ? CQTheme.red : CQTheme.yellow);
+        : ([status isEqualToString:@"需要登录"] || [status isEqualToString:@"已断开"] ? CQTheme.red : CQTheme.yellow);
     self.statusLabel.textColor = CQTheme.subtext;
     self.statusDot.layer.backgroundColor = statusColor.CGColor;
     self.detailLabel.stringValue = detail;
-    self.planLabel.stringValue = deepSeek ? @"DEEPSEEK" : (glm ? @"ZHIPU GLM" : (snapshot.planType.capitalizedString ?: @""));
-    self.providerControl.selectedSegment = deepSeek ? 1 : (glm ? 2 : 0);
+    self.planLabel.stringValue = snapshot.planType.capitalizedString ?: @"";
     [self reconcileTaskSnapshot:taskSnapshot ?: [CQTaskSnapshot emptySnapshot]];
-    self.deepSeekPanel.hidden = !externalProvider;
-    NSArray<NSString *> *modelTitles = glm
-        ? @[CQGLMFlashModel, CQGLMModel]
-        : @[CQDeepSeekFlashModel, CQDeepSeekProModel];
-    NSArray<NSString *> *currentTitles = [self.modelPopup.itemArray valueForKey:@"title"];
-    if (![currentTitles isEqualToArray:modelTitles]) {
-        [self.modelPopup removeAllItems];
-        [self.modelPopup addItemsWithTitles:modelTitles];
-    }
-    [self.modelPopup selectItemWithTitle:model ?: modelTitles.firstObject];
-    self.providerMetricTitleLabel.stringValue = glm ? @"接入协议" : @"剩余金额";
-    self.deepSeekBalanceLabel.stringValue = glm
-        ? @"Codex Responses"
-        : (deepSeekBalance ? deepSeekBalance.displayValue : @"等待余额数据…");
-    self.deepSeekBalanceLabel.textColor = glm || deepSeekBalance.available ? CQTheme.accent : CQTheme.yellow;
-
-    self.quotaPanel.hidden = externalProvider;
     self.refreshButton.enabled = !refreshing;
     self.refreshButton.title = refreshing ? @"刷新中…" : @"刷新";
-    self.refreshButton.hidden = glm;
-    self.loginButton.hidden = externalProvider || !signedOut;
+    self.loginButton.hidden = !signedOut;
     self.launchCheckbox.state = launchAtLogin ? NSControlStateValueOn : NSControlStateValueOff;
 
-    if (!externalProvider) {
-        NSArray<CQRateLimitWindow *> *windows = [snapshot.windows sortedArrayUsingComparator:^NSComparisonResult(CQRateLimitWindow *a, CQRateLimitWindow *b) {
-            if (a.remainingPercent < b.remainingPercent) return NSOrderedAscending;
-            if (a.remainingPercent > b.remainingPercent) return NSOrderedDescending;
-            return [a.limitID compare:b.limitID];
-        }];
-        [self reconcileQuotaWindows:windows ?: @[] hasSnapshot:snapshot != nil];
-        NSUInteger lowCount = 0;
-        for (CQRateLimitWindow *window in windows) if (window.remainingPercent <= 20) lowCount++;
-        self.quotaSummaryLabel.stringValue = lowCount > 0 ? [NSString stringWithFormat:@"剩余 · %lu 项偏低", (unsigned long)lowCount] : @"剩余";
-        self.quotaSummaryLabel.textColor = lowCount > 0 ? CQTheme.red : CQTheme.subtext;
-        if (self.emptyQuotaLabel && (signedOut || error.length > 0)) {
-            self.emptyQuotaLabel.stringValue = signedOut ? @"登录 Codex 后查看订阅额度" : @"暂时无法获取额度，请刷新重试";
-        }
+    NSArray<CQRateLimitWindow *> *windows = [snapshot.windows sortedArrayUsingComparator:^NSComparisonResult(CQRateLimitWindow *a, CQRateLimitWindow *b) {
+        if (a.remainingPercent < b.remainingPercent) return NSOrderedAscending;
+        if (a.remainingPercent > b.remainingPercent) return NSOrderedDescending;
+        return [a.limitID compare:b.limitID];
+    }];
+    [self reconcileQuotaWindows:windows ?: @[] hasSnapshot:snapshot != nil];
+    NSUInteger lowCount = 0;
+    for (CQRateLimitWindow *window in windows) if (window.remainingPercent <= 20) lowCount++;
+    self.quotaSummaryLabel.stringValue = lowCount > 0 ? [NSString stringWithFormat:@"剩余 · %lu 项偏低", (unsigned long)lowCount] : @"剩余";
+    self.quotaSummaryLabel.textColor = lowCount > 0 ? CQTheme.red : CQTheme.subtext;
+    if (self.emptyQuotaLabel && (signedOut || error.length > 0)) {
+        self.emptyQuotaLabel.stringValue = signedOut ? @"登录 Codex 后查看订阅额度" : @"暂时无法获取额度，请刷新重试";
     }
 
     self.resetRow.hidden = !snapshot.resetCreditsAvailable;
     self.quotaDetailsDivider.hidden = !snapshot.resetCreditsAvailable && !snapshot.hasWorkspaceCredits;
     self.resetValueLabel.stringValue = snapshot.resetCreditsAvailable
         ? [NSString stringWithFormat:@"%@ 次", snapshot.resetCreditsAvailable] : @"不可用";
-    self.workspaceRow.hidden = externalProvider || !snapshot.hasWorkspaceCredits;
-    if (!externalProvider && snapshot.hasWorkspaceCredits) {
+    self.workspaceRow.hidden = !snapshot.hasWorkspaceCredits;
+    if (snapshot.hasWorkspaceCredits) {
         self.workspaceValueLabel.stringValue = snapshot.workspaceUnlimited
             ? @"无限" : (snapshot.workspaceBalance ?: @"不可用");
     }
     self.errorLabel.hidden = error.length == 0;
     self.errorLabel.stringValue = error ?: @"";
-    NSDate *updatedAt = deepSeek ? deepSeekBalance.updatedAt : snapshot.updatedAt;
-    self.updatedLabel.stringValue = glm ? @"配置已就绪"
-        : (updatedAt ? [NSString stringWithFormat:@"更新于 %@", CQAbsoluteDateString(updatedAt)] : @"尚未更新");
+    self.updatedLabel.stringValue = snapshot.updatedAt
+        ? [NSString stringWithFormat:@"更新于 %@", CQAbsoluteDateString(snapshot.updatedAt)] : @"尚未更新";
 
     [self.view layoutSubtreeIfNeeded];
     CGFloat contentHeight = self.contentStack.fittingSize.height;
@@ -968,17 +862,6 @@ static NSString *CQTaskTimeLabel(CQCodexTask *task) {
 - (void)refresh:(id)sender { if (self.refreshHandler) self.refreshHandler(); }
 - (void)login:(id)sender { if (self.loginHandler) self.loginHandler(); }
 - (void)chooseCodex:(id)sender { if (self.chooseCodexHandler) self.chooseCodexHandler(); }
-- (void)providerChanged:(NSSegmentedControl *)sender {
-    if (self.providerChangeHandler) {
-        CQProviderMode mode = sender.selectedSegment == 1 ? CQProviderModeDeepSeek
-            : (sender.selectedSegment == 2 ? CQProviderModeGLM : CQProviderModeCodex);
-        self.providerChangeHandler(mode);
-    }
-}
-- (void)modelChanged:(NSPopUpButton *)sender {
-    if (self.modelChangeHandler) self.modelChangeHandler(sender.selectedItem.title);
-}
-- (void)changeAPIKey:(id)sender { if (self.changeAPIKeyHandler) self.changeAPIKeyHandler(); }
 - (void)showExtensions:(id)sender { if (self.extensionManagerHandler) self.extensionManagerHandler(); }
 - (void)showNotificationSettings:(id)sender { if (self.notificationSettingsHandler) self.notificationSettingsHandler(); }
 - (void)taskSelected:(CQTaskRowButton *)sender { if (self.taskSelectedHandler) self.taskSelectedHandler(sender.task); }
